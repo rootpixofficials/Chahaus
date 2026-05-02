@@ -77,6 +77,6 @@ export const printViaRawBT = (receiptData) => {
     text += `TOTAL: ${receiptData.total}\n`;
     text += `\nThank you for visiting!\n\n\n`;
 
-    const encodedText = btoa(text);
-    window.location.href = `rawbt:base64,${encodedText}`;
+    const intentUrl = 'intent:' + encodeURIComponent(text) + '#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;';
+    window.location.href = intentUrl;
 };
