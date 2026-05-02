@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import Cookies from 'js-cookie';
+import axios from 'axios';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -19,7 +20,7 @@ export default function LoginPage() {
 
     try {
       const data = await api.post('/login', { username, password });
-
+       
       // Store JWT token and role securely in cookies (for middleware) and localStorage (for axios)
       Cookies.set('token', data.token, { expires: 1 }); 
       Cookies.set('role', data.role, { expires: 1 });
