@@ -103,10 +103,30 @@ export const printReceipt = async (characteristic, receiptData) => {
     }
 };
 
+// Helper to convert image URL to Base64
+const getBase64ImageFromUrl = async (imageUrl) => {
+    try {
+        const res = await fetch(imageUrl);
+        const blob = await res.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (e) {
+        console.error("Failed to fetch image for printing", e);
+        return "";
+    }
+};
+
 // Alternative for Android RawBT Intent using HTML for Exact Design
-export const printViaRawBT = (receiptData) => {
+export const printViaRawBT = async (receiptData) => {
     // Get absolute URL for the logo so the printer can fetch it
     const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
+    
+    // Fetch and convert logo to Base64 so RawBT can render it without network issues
+    const base64Logo = await getBase64ImageFromUrl(logoUrl);
 
     const html = `
     <!DOCTYPE html>
@@ -126,7 +146,7 @@ export const printViaRawBT = (receiptData) => {
     </head>
     <body>
         <div class="center">
-            <img src="${logoUrl}" style="width:80px; height:auto; margin-bottom:5px;" onerror="this.style.display='none'" />
+            ${base64Logo ? `<img src="${base64Logo}" style="width:100px; height:auto; margin-bottom:5px; filter: grayscale(100%);" />` : ''}
             <h2 style="margin:5px 0;">CHA HAUS</h2>
             <div style="font-size:12px;">Tea & Snacks</div>
         </div>
