@@ -105,17 +105,24 @@ export const printReceipt = async (characteristic, receiptData) => {
 
 // Alternative for Android RawBT Intent
 export const printViaRawBT = (receiptData) => {
-    let text = `CHA HAUS\n`;
-    text += `Bill #: ${receiptData.bill_number}\n`;
-    text += `${receiptData.date}\n`;
-    text += `--------------------------------\n`;
-    receiptData.items.forEach(item => {
-        text += `${item.quantity} x ${item.name.padEnd(15)} ${item.subtotal}\n`;
-    });
-    text += `--------------------------------\n`;
-    text += `TOTAL: ${receiptData.total}\n`;
-    text += `\nThank you for visiting!\n\n\n`;
+    let text = "";
 
-    const intentUrl = 'intent:' + encodeURIComponent(text) + '#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;';
-    window.location.href = intentUrl;
+    text += "CHA HAUS\n";
+    text += `Bill #: ${receiptData.bill_number || ""}\n`;
+    text += `${receiptData.date || ""}\n`;
+    text += "------------------------------\n";
+
+    (receiptData.items || []).forEach(item => {
+        const name = (item.name || "").slice(0, 15);
+        text += `${item.quantity} x ${name} - ${item.subtotal}\n`;
+    });
+
+    text += "------------------------------\n";
+    text += `TOTAL: ${receiptData.total || 0}\n`;
+    text += "\nThank you!\n\n\n";
+
+    // 🔥 FIXED RAWBT CALL
+    const url = "rawbt://print?text=" + encodeURIComponent(text);
+
+    window.location.href = url;
 };
