@@ -121,8 +121,10 @@ export const printViaRawBT = (receiptData) => {
     text += `TOTAL: ${receiptData.total || 0}\n`;
     text += "\nThank you!\n\n\n";
 
-    // 🔥 FIXED RAWBT CALL
-    const url = "rawbt://print?text=" + encodeURIComponent(text);
+    // 🔥 FIXED RAWBT CALL (Most stable method: Base64 to prevent character drops)
+    // Use unescape + encodeURIComponent to safely base64 encode any special characters
+    const safeBase64 = btoa(unescape(encodeURIComponent(text)));
+    const url = "rawbt:base64," + safeBase64;
 
     window.location.href = url;
 };
