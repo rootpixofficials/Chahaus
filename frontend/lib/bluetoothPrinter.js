@@ -1,12 +1,12 @@
 /**
- * Bluetooth Printer Utility for ESC/POS Thermal Printers
- * Supports Web Bluetooth API (Chrome/Edge/Android)
+ * Bluetooth Printer Utility (FIXED VERSION)
+ * Stable ESC/POS implementation for Web Bluetooth
  */
 
 export const connectPrinter = async () => {
     try {
         const device = await navigator.bluetooth.requestDevice({
-            filters: [{ services: ['000018f0-0000-1000-8000-00805f9b34fb'] }], // Standard Printer Service
+            acceptAllDevices: true,
             optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
         });
 
@@ -21,47 +21,86 @@ export const connectPrinter = async () => {
     }
 };
 
-export const printReceipt = async (characteristic, receiptData) => {
-    const encoder = new TextEncoder();
-    
-    // ESC/POS Commands
-    const INIT = [0x1B, 0x40]; // Initialize printer
-    const ALIGN_CENTER = [0x1B, 0x61, 1];
-    const ALIGN_LEFT = [0x1B, 0x61, 0];
-    const BOLD_ON = [0x1B, 0x45, 1];
-    const BOLD_OFF = [0x1B, 0x45, 0];
-    const FEED_AND_CUT = [0x1D, 0x56, 66, 0]; // Feed 3 lines and cut
 
-    const send = async (data) => {
-        const chunk = new Uint8Array(data);
+// 🔥 SAFE CHUNK SENDER (IMPORTANT FIX)
+const writeChunked = async (characteristic, data) => {
+    const chunkSize = 180; // safe BLE packet size
+    for (let i = 0; i < data.length; i += chunkSize) {
+        const chunk = data.slice(i, i + chunkSize);
         await characteristic.writeValue(chunk);
-    };
-
-    // Header
-    await send(INIT);
-    await send(ALIGN_CENTER);
-    await send(BOLD_ON);
-    await send(encoder.encode("CHA HAUS\n"));
-    await send(BOLD_OFF);
-    await send(encoder.encode(`Bill #: ${receiptData.bill_number}\n`));
-    await send(encoder.encode(`${receiptData.date}\n`));
-    await send(encoder.encode("--------------------------------\n"));
-
-    // Items
-    await send(ALIGN_LEFT);
-    for (const item of receiptData.items) {
-        const line = `${item.quantity} x ${item.name.padEnd(18)} ₹${item.subtotal}\n`;
-        await send(encoder.encode(line));
     }
+};
 
-    // Footer
-    await send(ALIGN_CENTER);
-    await send(encoder.encode("--------------------------------\n"));
-    await send(BOLD_ON);
-    await send(encoder.encode(`TOTAL: ₹${receiptData.total}\n`));
-    await send(BOLD_OFF);
-    await send(encoder.encode("\nThank you for visiting!\n"));
-    await send(FEED_AND_CUT);
+
+// Convert text safely
+const textEncode = (text) => {
+    return new TextEncoder().encode(text);
+};
+
+
+// ESC/POS Commands
+const CMD = {
+    INIT: new Uint8Array([0x1B, 0x40]),
+    CENTER: new Uint8Array([0x1B, 0x61, 1]),
+    LEFT: new Uint8Array([0x1B, 0x61, 0]),
+    BOLD_ON: new Uint8Array([0x1B, 0x45, 1]),
+    BOLD_OFF: new Uint8Array([0x1B, 0x45, 0]),
+    CUT: new Uint8Array([0x1D, 0x56, 66, 0])
+};
+
+
+// MAIN PRINT FUNCTION (FIXED)
+export const printReceipt = async (characteristic, receiptData) => {
+    try {
+        await characteristic.writeValue(CMD.INIT);
+
+        // HEADER
+        await characteristic.writeValue(CMD.CENTER);
+        await characteristic.writeValue(CMD.BOLD_ON);
+        await writeChunked(characteristic, textEncode("CHA HAUS\n"));
+        await characteristic.writeValue(CMD.BOLD_OFF);
+
+        await writeChunked(characteristic, textEncode(
+            `Bill #: ${receiptData.bill_number || ""}\n` +
+            `${receiptData.date || ""}\n` +
+            "------------------------------\n"
+        ));
+
+        // ITEMS
+        await characteristic.writeValue(CMD.LEFT);
+
+        for (const item of receiptData.items || []) {
+            const name = (item.name || "").slice(0, 18); // prevent overflow
+            const qty = item.quantity || 0;
+            const subtotal = item.subtotal || 0;
+
+            const line = `${qty} x ${name} - ${subtotal}\n`;
+            await writeChunked(characteristic, textEncode(line));
+        }
+
+        // FOOTER
+        await writeChunked(characteristic, textEncode(
+            "------------------------------\n"
+        ));
+
+        await characteristic.writeValue(CMD.CENTER);
+        await characteristic.writeValue(CMD.BOLD_ON);
+
+        await writeChunked(characteristic, textEncode(
+            `TOTAL: ${receiptData.total || 0}\n`
+        ));
+
+        await characteristic.writeValue(CMD.BOLD_OFF);
+
+        await writeChunked(characteristic, textEncode(
+            "\nThank you!\n\n"
+        ));
+
+        await characteristic.writeValue(CMD.CUT);
+
+    } catch (err) {
+        console.error("Print failed:", err);
+    }
 };
 
 // Alternative for Android RawBT Intent
