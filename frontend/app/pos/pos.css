@@ -1,0 +1,447 @@
+/* Tablet-friendly, premium POS design */
+.pos-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #f8fafc;
+    font-family: 'Inter', sans-serif;
+    color: #1e293b;
+    overflow: hidden;
+}
+
+/* Header & Nav */
+.pos-header {
+    background: #ffffff;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    z-index: 10;
+}
+
+.pos-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    font-size: 20px;
+    color: #be9249;
+}
+
+.pos-logo img {
+    height: 60px;
+    width: auto;
+}
+
+/* Tabs */
+.pos-tabs {
+    display: flex;
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0 20px;
+    gap: 30px;
+}
+
+.tab-item {
+    padding: 14px 10px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.tab-item.active {
+    color: #be9249;
+}
+
+.tab-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #be9249;
+    border-radius: 3px 3px 0 0;
+}
+
+/* Main Content Area */
+.pos-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+
+
+/* Product Card */
+.product-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    border: 1px solid #f1f5f9;
+}
+
+.product-card:active {
+    transform: scale(0.97);
+}
+
+.product-image {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    background: #f1f5f9;
+}
+
+.product-info {
+    text-align: center;
+    width: 100%;
+}
+
+.product-name {
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.product-price {
+    color: #be9249;
+    font-weight: 800;
+    font-size: 16px;
+}
+
+/* Quantity Controls on Card */
+.qty-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    width: 100%;
+    justify-content: center;
+}
+
+.qty-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: bold;
+    color: #475569;
+}
+
+.qty-input {
+    width: 35px;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 14px;
+    padding: 2px 0;
+    font-weight: 700;
+}
+
+/* Cart Sidebar (Visible on large screens, or maybe a slide-over) */
+
+
+.cart-header {
+    padding: 20px;
+    border-bottom: 1px solid #f1f5f9;
+    font-weight: 800;
+    font-size: 18px;
+}
+
+.cart-items {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.cart-item {
+    display: flex;
+    padding: 12px;
+    border-bottom: 1px solid #f8fafc;
+    align-items: center;
+    gap: 12px;
+}
+
+.cart-item-info {
+    flex: 1;
+}
+
+.cart-item-name {
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.cart-item-price {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.cart-item-total {
+    font-weight: 800;
+    font-size: 15px;
+}
+
+/* Cart Footer */
+.cart-footer {
+    padding: 20px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+}
+
+.cart-total-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    font-size: 18px;
+    font-weight: 900;
+}
+
+.btn-checkout {
+    width: 100%;
+    padding: 16px;
+    background: #059669;
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-weight: 800;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(5, 150, 105, 0.2);
+}
+
+/* Bottom Bar */
+.pos-bottom-bar {
+    background: #ffffff;
+    height: 70px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: stretch;
+    align-items: stretch;
+    position: relative;
+    z-index: 100;
+    padding: 0;
+}
+
+.bottom-bar-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 13px;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.bottom-bar-item.active {
+    color: #be9249;
+    background: #fdfaf3;
+}
+
+.bottom-bar-item.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 15%;
+    right: 15%;
+    height: 4px;
+    background: #be9249;
+    border-radius: 0 0 4px 4px;
+}
+
+.bottom-bar-icon {
+    font-size: 24px;
+    margin-bottom: 2px;
+}
+
+/* Thermal Bill Preview */
+.receipt-preview-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    backdrop-filter: blur(4px);
+}
+
+.receipt-content {
+    background: white;
+    width: 320px; /* 80mm width roughly */
+    padding: 20px;
+    max-height: 80vh;
+    overflow-y: auto;
+    font-family: 'Courier New', Courier, monospace;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+.receipt-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.receipt-logo {
+    filter: grayscale(1);
+    height: 90px;
+    margin-bottom: 8px;
+}
+
+.receipt-divider {
+    border-top: 1px dashed #000;
+    margin: 10px 0;
+}
+
+.receipt-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+/* Tabular view for bills section */
+.bills-table-container {
+    padding: 20px;
+    background: white;
+    margin: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.bills-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.bills-table th, .bills-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.pos-logo img {
+    height: 50px;
+    width: auto;
+}
+
+@media print {
+    /* Hide all elements on the page */
+    body * {
+        visibility: hidden !important;
+    }
+
+    /* Show only the receipt modal and its children */
+    .receipt-preview-modal, 
+    .receipt-preview-modal * {
+        visibility: visible !important;
+    }
+
+    /* Position the modal to the very top left of the print page */
+    .receipt-preview-modal {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        background: white !important;
+        display: block !important;
+        z-index: 9999 !important;
+    }
+
+    .receipt-content {
+        width: 80mm !important; /* Standard Thermal Size */
+        margin: 0 auto !important;
+        padding: 5mm !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: black !important;
+        background: white !important;
+    }
+
+    .receipt-logo {
+        max-width: 120px !important;
+        height: auto !important;
+        display: block !important;
+        margin: 0 auto 10px auto !important;
+    }
+    
+    /* Ensure no margins/headers/footers from browser */
+    @page {
+        margin: 0;
+    }
+}
+
+/* Responsive Grid & Cart Visibility */
+.pos-products-area {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: grid;
+    gap: 20px;
+    align-content: start;
+    grid-template-columns: 1fr; /* Default Mobile: 1 column */
+}
+
+.pos-cart-sidebar {
+    width: 320px;
+    background: #ffffff;
+    border-left: 1px solid #e2e8f0;
+    display: flex !important; /* Always mandatory visible */
+    flex-direction: column;
+    z-index: 5;
+    position: relative !important;
+    transform: none !important;
+}
+
+@media (min-width: 601px) {
+    .pos-products-area {
+        grid-template-columns: repeat(2, 1fr); /* Tablet: 2 columns */
+    }
+}
+
+@media (min-width: 1280px) {
+    .pos-products-area {
+        grid-template-columns: repeat(3, 1fr); /* Desktop: 3 columns */
+    }
+    .pos-cart-sidebar {
+        width: 400px; /* Larger sidebar for desktop */
+    }
+}
+
+/* Mobile specific sidebar adjustment */
+@media (max-width: 600px) {
+    .pos-body {
+        flex-direction: column; /* Stack vertically if too narrow */
+    }
+    .pos-cart-sidebar {
+        width: 100%;
+        height: 300px;
+        border-left: none;
+        border-top: 1px solid #e2e8f0;
+    }
+}
