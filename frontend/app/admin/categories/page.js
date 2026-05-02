@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import api from '@/lib/api';
 import Cookies from 'js-cookie';
 
 export default function CategoriesPage() {
@@ -22,12 +23,8 @@ export default function CategoriesPage() {
 
     const fetchCategories = async () => {
         try {
-            const token = Cookies.get('token');
-            const res = await fetch('http://localhost:5000/api/admin/categories', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (res.ok) setCategories(data);
+            const data = await api.get('/admin/categories');
+            setCategories(data);
         } catch (err) {
             console.error(err);
         } finally {
@@ -45,22 +42,12 @@ export default function CategoriesPage() {
 
     const handleCategorySubmit = async (e) => {
         e.preventDefault();
-        const token = Cookies.get('token');
-        const method = modalType === 'add' ? 'POST' : 'PUT';
-        const url = modalType === 'add' 
-            ? 'http://localhost:5000/api/admin/categories' 
-            : `http://localhost:5000/api/admin/categories/${currentCategory.id}`;
-
         try {
-            const res = await fetch(url, {
-                method,
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ name: currentCategory.name })
-            });
-            if (res.ok) {
+            const endpoint = modalType === 'add' ? '/admin/categories' : `/admin/categories/${currentCategory.id}`;
+            const method = modalType === 'add' ? 'post' : 'put';
+            const data = await api[method](endpoint, { name: currentCategory.name });
+
+            if (data) {
                 setShowModal(false);
                 setCurrentCategory({ id: null, name: '' });
                 fetchCategories();
@@ -73,12 +60,8 @@ export default function CategoriesPage() {
     const handleDelete = async (id) => {
         if (!window.confirm('Are you sure you want to delete this category? All related products will also be affected.')) return;
         try {
-            const token = Cookies.get('token');
-            const res = await fetch(`http://localhost:5000/api/admin/categories/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) fetchCategories();
+            await api.delete(`/admin/categories/${id}`);
+            fetchCategories();
         } catch (err) {
             alert('Delete failed');
         }
@@ -86,24 +69,14 @@ export default function CategoriesPage() {
 
     const handleSubSubmit = async (e) => {
         e.preventDefault();
-        const token = Cookies.get('token');
         const isEdit = modalType === 'editSub';
-        const url = isEdit 
-            ? `http://localhost:5000/api/admin/subcategories/${currentSub.id}`
-            : 'http://localhost:5000/api/admin/subcategories';
-        const method = isEdit ? 'PUT' : 'POST';
+        const endpoint = isEdit ? `/admin/subcategories/${currentSub.id}` : '/admin/subcategories';
+        const method = isEdit ? 'put' : 'post';
         const body = isEdit ? { name: currentSub.name } : { name: newSub.name, category_id: newSub.category_id };
 
         try {
-            const res = await fetch(url, {
-                method,
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(body)
-            });
-            if (res.ok) {
+            const data = await api[method](endpoint, body);
+            if (data) {
                 setShowSubModal(false);
                 setNewSub({ name: '', category_id: null, category_name: '' });
                 setCurrentSub({ id: null, name: '' });
@@ -118,12 +91,8 @@ export default function CategoriesPage() {
         e.stopPropagation();
         if (!window.confirm('Delete this subcategory?')) return;
         try {
-            const token = Cookies.get('token');
-            const res = await fetch(`http://localhost:5000/api/admin/subcategories/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) fetchCategories();
+            await api.delete(`/admin/subcategories/${id}`);
+            fetchCategories();
         } catch (err) {
             alert('Delete failed');
         }

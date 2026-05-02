@@ -12,6 +12,8 @@ export default function AdminLayout({ children }) {
     if (window.confirm('Are you sure you want to logout from Admin Panel?')) {
         Cookies.remove('token');
         Cookies.remove('role');
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
         router.push('/login');
     }
   };

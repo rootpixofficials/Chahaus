@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import api from '@/lib/api';
 import Cookies from 'js-cookie';
 
 export default function AdminBills() {
@@ -16,12 +17,8 @@ export default function AdminBills() {
 
     const fetchBills = async () => {
         try {
-            const token = Cookies.get('token');
-            const res = await fetch('http://localhost:5000/api/admin/bills', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (res.ok) setBills(data);
+            const data = await api.get('/admin/bills');
+            setBills(data);
         } catch (err) {
             console.error(err);
         } finally {
@@ -31,18 +28,12 @@ export default function AdminBills() {
 
     const viewBill = async (bill) => {
         try {
-            const token = Cookies.get('token');
-            const res = await fetch(`http://localhost:5000/api/admin/bills/${bill.id}/items`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+            const items = await api.get(`/admin/bills/${bill.id}/items`);
+            setShowReceipt({
+                ...bill,
+                items,
+                date: new Date(bill.created_at).toLocaleString()
             });
-            const items = await res.json();
-            if (res.ok) {
-                setShowReceipt({
-                    ...bill,
-                    items,
-                    date: new Date(bill.created_at).toLocaleString()
-                });
-            }
         } catch (err) {
             alert('Failed to load bill items');
         }

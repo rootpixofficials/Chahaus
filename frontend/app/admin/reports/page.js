@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import api from '@/lib/api';
 import Cookies from 'js-cookie';
 
 export default function ReportsPage() {
@@ -14,14 +15,13 @@ export default function ReportsPage() {
 
     const fetchReports = async () => {
         try {
-            const token = Cookies.get('token');
-            const [statsRes, chartRes] = await Promise.all([
-                fetch('http://localhost:5000/api/admin/stats', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('http://localhost:5000/api/admin/chart-data', { headers: { 'Authorization': `Bearer ${token}` } })
+            const [statsData, chartData] = await Promise.all([
+                api.get('/admin/stats'),
+                api.get('/admin/chart-data')
             ]);
             
-            if (statsRes.ok) setStats(await statsRes.json());
-            if (chartRes.ok) setChartData(await chartRes.json());
+            setStats(statsData);
+            setChartData(chartData);
         } catch (err) {
             console.error(err);
         } finally {
@@ -45,11 +45,11 @@ export default function ReportsPage() {
                         const height = (Number(day.total) / maxSales) * 100;
                         return (
                             <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', height:'100%', justifyContent:'flex-end' }}>
-                                <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#10b981' }}>₹{Math.round(day.total)}</div>
+                                <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#be9249' }}>₹{Math.round(day.total)}</div>
                                 <div style={{ 
                                     width: '100%', 
                                     height: `${height}%`, 
-                                    background: 'linear-gradient(to top, #10b981, #34d399)', 
+                                    background: 'linear-gradient(to top, #be9249, #dfbd7a)', 
                                     borderRadius: '8px 8px 0 0',
                                     minHeight: '4px',
                                     transition: 'height 0.5s ease'
@@ -64,9 +64,9 @@ export default function ReportsPage() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-                <div style={{ background: '#f0fdf4', padding: '20px', borderRadius: '16px', border: '1px solid #bbf7d0' }}>
-                    <h4 style={{ margin: '0 0 10px 0', color: '#166534' }}>Top Selling Strategy</h4>
-                    <p style={{ margin: 0, fontSize: '14px', color: '#15803d' }}>
+                <div style={{ background: '#fdfaf3', padding: '20px', borderRadius: '16px', border: '1px solid #be9249' }}>
+                    <h4 style={{ margin: '0 0 10px 0', color: '#be9249' }}>Top Selling Strategy</h4>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#85642a' }}>
                         Your top product is <strong>{stats?.topProduct}</strong> with <strong>{stats?.topQty}</strong> sales. 
                         Consider increasing stock or creating a bundle with <strong>{stats?.bottomProduct}</strong> to drive more sales.
                     </p>

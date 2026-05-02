@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Cookies from 'js-cookie';
+import api from '@/lib/api';
 import Link from 'next/link';
 
 export default function ProductsPage() {
@@ -32,16 +32,16 @@ export default function ProductsPage() {
 
     const fetchData = async () => {
         try {
-            const token = Cookies.get('token');
-            const [prodRes, subRes, catRes] = await Promise.all([
-                fetch('http://localhost:5000/api/admin/products', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('http://localhost:5000/api/admin/subcategories', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('http://localhost:5000/api/admin/categories', { headers: { 'Authorization': `Bearer ${token}` } })
+            setLoading(true);
+            const [prodData, subData, catData] = await Promise.all([
+                api.get('/admin/products'),
+                api.get('/admin/subcategories'),
+                api.get('/admin/categories')
             ]);
             
-            if (prodRes.ok) setProducts(await prodRes.json());
-            if (subRes.ok) setSubcategories(await subRes.json());
-            if (catRes.ok) setCategories(await catRes.json());
+            setProducts(prodData);
+            setSubcategories(subData);
+            setCategories(catData);
         } catch (err) {
             console.error(err);
         } finally {
@@ -65,47 +65,27 @@ export default function ProductsPage() {
         e.preventDefault();
         setIsUploading(true);
         try {
-            const token = Cookies.get('token');
             let finalImageUrl = newProduct.image_url;
 
-            // 1. Upload Image if selected
+            // 1. Upload image if selected
             if (selectedFile) {
                 const formData = new FormData();
                 formData.append('image', selectedFile);
-
-                const uploadRes = await fetch('http://localhost:5000/api/admin/upload-image', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    body: formData
-                });
-
-                if (uploadRes.ok) {
-                    const uploadData = await uploadRes.json();
-                    finalImageUrl = uploadData.imageUrl;
-                } else {
-                    throw new Error('Image upload failed');
-                }
+                const uploadData = await api.upload('/admin/upload-image', formData);
+                finalImageUrl = uploadData.imageUrl;
             }
 
             // 2. Add/Update Product
-            const url = modalType === 'add' 
-                ? 'http://localhost:5000/api/admin/products'
-                : `http://localhost:5000/api/admin/products/${editProductId}`;
+            const endpoint = modalType === 'add' ? '/admin/products' : `/admin/products/${editProductId}`;
+            const method = modalType === 'add' ? 'post' : 'put';
             
-            const res = await fetch(url, {
-                method: modalType === 'add' ? 'POST' : 'PUT',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ 
-                    ...newProduct, 
-                    image_url: finalImageUrl,
-                    category_id: selectedCategoryId 
-                })
+            const data = await api[method](endpoint, {
+                ...newProduct, 
+                image_url: finalImageUrl,
+                category_id: selectedCategoryId 
             });
 
-            if (res.ok) {
+            if (data) {
                 setShowModal(false);
                 setNewProduct({ name: '', subcategory_id: '', image_url: '', production_cost: '', sales_rate: '' });
                 setSelectedCategoryId('');
@@ -125,13 +105,8 @@ export default function ProductsPage() {
     const handleDelete = async (id) => {
         if (!confirm('Are you sure you want to delete this product?')) return;
         try {
-            const token = Cookies.get('token');
-            const res = await fetch(`http://localhost:5000/api/admin/products/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) fetchData();
-            else alert('Failed to delete product');
+            await api.delete(`/admin/products/${id}`);
+            fetchData();
         } catch (err) {
             alert('Error deleting product');
         }

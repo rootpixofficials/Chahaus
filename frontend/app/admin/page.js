@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import api from '@/lib/api';
 import Cookies from 'js-cookie';
 
 export default function AdminDashboard() {
@@ -23,14 +24,13 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      const token = Cookies.get('token');
-      const [statsRes, chartRes] = await Promise.all([
-        fetch('http://localhost:5000/api/admin/stats', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch('http://localhost:5000/api/admin/chart-data', { headers: { 'Authorization': `Bearer ${token}` } })
+      const [statsData, chartData] = await Promise.all([
+        api.get('/admin/stats'),
+        api.get('/admin/chart-data')
       ]);
       
-      if (statsRes.ok) setStats(await statsRes.json());
-      if (chartRes.ok) setChartData(await chartRes.json());
+      setStats(statsData);
+      setChartData(chartData);
     } catch (err) {
       console.error(err);
     } finally {
@@ -46,11 +46,11 @@ export default function AdminDashboard() {
     <div>
       {/* Matrix Metrics */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-        <div className="admin-card" style={{ textAlign: 'center', background:'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)', border:'1px solid #bbf7d0' }}>
+        <div className="admin-card" style={{ textAlign: 'center', background:'linear-gradient(135deg, #ffffff 0%, #fef3c7 100%)', border:'1px solid #be9249' }}>
           <div style={{ fontSize: '32px', marginBottom: '10px' }}>💰</div>
-          <div style={{ color: '#166534', fontSize: '14px', fontWeight: '800', textTransform:'uppercase', letterSpacing:'1px' }}>Total Sales Revenue</div>
-          <div style={{ fontSize: '36px', fontWeight: '900', color: '#15803d', margin:'10px 0' }}>₹{Number(stats.sales).toLocaleString()}</div>
-          <div style={{ fontSize: '12px', color: '#166534', fontWeight:'600' }}>Lifetime earnings</div>
+          <div style={{ color: '#be9249', fontSize: '14px', fontWeight: '800', textTransform:'uppercase', letterSpacing:'1px' }}>Total Sales Revenue</div>
+          <div style={{ fontSize: '36px', fontWeight: '900', color: '#be9249', margin:'10px 0' }}>₹{Number(stats.sales).toLocaleString()}</div>
+          <div style={{ fontSize: '12px', color: '#be9249', fontWeight:'600' }}>Lifetime earnings</div>
         </div>
         <div className="admin-card" style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '32px', marginBottom: '10px' }}>🧾</div>
@@ -72,11 +72,11 @@ export default function AdminDashboard() {
             const height = (Number(day.total) / maxSales) * 100;
             return (
               <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#10b981' }}>₹{Math.round(day.total)}</div>
+                <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#be9249' }}>₹{Math.round(day.total)}</div>
                 <div style={{ 
                   width: '100%', 
                   height: `${height}%`, 
-                  background: 'linear-gradient(to top, #10b981, #34d399)', 
+                  background: 'linear-gradient(to top, #be9249, #dfbd7a)', 
                   borderRadius: '8px 8px 0 0',
                   minHeight: '5px',
                   transition: 'height 0.5s ease'
@@ -96,13 +96,13 @@ export default function AdminDashboard() {
 
       {/* Product Highlights */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-        <div className="admin-card" style={{ borderLeft: '6px solid #10b981' }}>
+        <div className="admin-card" style={{ borderLeft: '6px solid #be9249' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <div style={{ fontSize: '40px' }}>🏆</div>
             <div>
               <div style={{ color: '#64748b', fontSize: '14px', fontWeight: '600' }}>Highest Selling Product</div>
               <div style={{ fontSize: '22px', fontWeight: '800', color: '#1e293b' }}>{stats.topProduct}</div>
-              <div style={{ fontSize: '14px', color: '#10b981', fontWeight: '700' }}>Total Sold: {stats.topQty}</div>
+              <div style={{ fontSize: '14px', color: '#be9249', fontWeight: '700' }}>Total Sold: {stats.topQty}</div>
             </div>
           </div>
         </div>

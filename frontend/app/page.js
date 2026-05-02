@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import api from '@/lib/api';
 import Cookies from 'js-cookie';
 import './pos/pos.css';
 
@@ -26,21 +27,12 @@ export default function Home() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const token = Cookies.get('token');
-            const res = await fetch('http://localhost:5000/api/customer/pos-data', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (res.ok) {
-                setCategories([{ id: 0, name: 'All' }, ...data.categories]);
-                setProducts(data.products);
-            }
+            const data = await api.get('/customer/pos-data');
+            setCategories([{ id: 0, name: 'All' }, ...data.categories]);
+            setProducts(data.products);
 
-            const billsRes = await fetch('http://localhost:5000/api/customer/bills', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const billsData = await billsRes.json();
-            if (billsRes.ok) setBills(billsData);
+            const billsData = await api.get('/customer/bills');
+            setBills(billsData);
 
         } catch (err) {
             console.error('Fetch error:', err);
@@ -53,6 +45,8 @@ export default function Home() {
         if (window.confirm('Are you sure you want to logout?')) {
             Cookies.remove('token');
             Cookies.remove('role');
+            localStorage.removeItem('token');
+            localStorage.removeItem('role');
             window.location.href = '/login';
         }
     };
@@ -87,29 +81,19 @@ export default function Home() {
         if (cart.length === 0) return;
         
         try {
-            const token = Cookies.get('token');
-            const url = editBillId 
-                ? `http://localhost:5000/api/customer/bills/${editBillId}`
-                : 'http://localhost:5000/api/customer/bills';
-            const method = editBillId ? 'PUT' : 'POST';
-
-            const res = await fetch(url, {
-                method,
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    total_amount: calculateTotal(),
-                    payment_method: paymentMethod,
-                    items: cart
-                })
+            const endpoint = editBillId ? `/customer/bills/${editBillId}` : '/customer/bills';
+            const method = editBillId ? 'put' : 'post';
+            
+            const data = await api[method](endpoint, {
+                total_amount: calculateTotal(),
+                payment_method: paymentMethod,
+                items: cart
             });
 
-            if (res.ok) {
-                const data = editBillId ? { bill_number: bills.find(b => b.id === editBillId).bill_number } : await res.json();
+            if (data) {
+                const billNumber = editBillId ? bills.find(b => b.id === editBillId).bill_number : data.bill_number;
                 setShowReceipt({
-                    bill_number: data.bill_number,
+                    bill_number: billNumber,
                     items: cart,
                     total: calculateTotal(),
                     payment_method: paymentMethod,
@@ -127,22 +111,16 @@ export default function Home() {
 
     const handleEditBill = async (bill) => {
         try {
-            const token = Cookies.get('token');
-            const res = await fetch(`http://localhost:5000/api/customer/bills/${bill.id}/items`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const items = await res.json();
-            if (res.ok) {
-                setCart(items.map(i => ({
-                    product_id: i.product_id,
-                    name: i.name,
-                    price: i.price,
-                    quantity: i.quantity,
-                    subtotal: i.subtotal
-                })));
-                setEditBillId(bill.id);
-                setView('products');
-            }
+            const items = await api.get(`/customer/bills/${bill.id}/items`);
+            setCart(items.map(i => ({
+                product_id: i.product_id,
+                name: i.name,
+                price: i.price,
+                quantity: i.quantity,
+                subtotal: i.subtotal
+            })));
+            setEditBillId(bill.id);
+            setView('products');
         } catch (err) {
             alert('Failed to load bill for editing');
         }
@@ -295,18 +273,18 @@ export default function Home() {
                                             <td>{bill.payment_method}</td>
                                             <td style={{display:'flex', gap:'8px'}}>
                                                 <button onClick={async () => {
-                                                    const token = Cookies.get('token');
-                                                    const res = await fetch(`http://localhost:5000/api/customer/bills/${bill.id}/items`, {
-                                                        headers: { 'Authorization': `Bearer ${token}` }
-                                                    });
-                                                    const items = await res.json();
-                                                    setShowReceipt({
-                                                        bill_number: bill.bill_number,
-                                                        items: items.map(i => ({...i, subtotal: i.subtotal})),
-                                                        total: bill.total_amount,
-                                                        payment_method: bill.payment_method,
-                                                        date: new Date(bill.created_at).toLocaleString()
-                                                    });
+                                                    try {
+                                                        const items = await api.get(`/customer/bills/${bill.id}/items`);
+                                                        setShowReceipt({
+                                                            bill_number: bill.bill_number,
+                                                            items: items.map(i => ({...i, subtotal: i.subtotal})),
+                                                            total: bill.total_amount,
+                                                            payment_method: bill.payment_method,
+                                                            date: new Date(bill.created_at).toLocaleString()
+                                                        });
+                                                    } catch (err) {
+                                                        alert('Failed to load bill items');
+                                                    }
                                                 }} style={{padding:'6px 12px', borderRadius:'6px', border:'1px solid #059669', color:'#059669', background:'white', cursor:'pointer', fontWeight:'bold'}}>View</button>
                                                 
                                                 <button onClick={() => handleEditBill(bill)} style={{padding:'6px 12px', borderRadius:'6px', border:'1px solid #d97706', color:'#d97706', background:'white', cursor:'pointer', fontWeight:'bold'}}>Edit</button>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import api from '@/lib/api';
 import Cookies from 'js-cookie';
 
 export default function SubcategoriesPage() {
@@ -16,14 +17,13 @@ export default function SubcategoriesPage() {
 
     const fetchData = async () => {
         try {
-            const token = Cookies.get('token');
-            const [subRes, catRes] = await Promise.all([
-                fetch('http://localhost:5000/api/admin/subcategories', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('http://localhost:5000/api/admin/categories', { headers: { 'Authorization': `Bearer ${token}` } })
+            const [subData, catData] = await Promise.all([
+                api.get('/admin/subcategories'),
+                api.get('/admin/categories')
             ]);
             
-            if (subRes.ok) setSubcategories(await subRes.json());
-            if (catRes.ok) setCategories(await catRes.json());
+            setSubcategories(subData);
+            setCategories(catData);
         } catch (err) {
             console.error(err);
         } finally {
@@ -34,16 +34,8 @@ export default function SubcategoriesPage() {
     const handleAdd = async (e) => {
         e.preventDefault();
         try {
-            const token = Cookies.get('token');
-            const res = await fetch('http://localhost:5000/api/admin/subcategories', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(newSub)
-            });
-            if (res.ok) {
+            const data = await api.post('/admin/subcategories', newSub);
+            if (data) {
                 setShowModal(false);
                 setNewSub({ name: '', category_id: '' });
                 fetchData();

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import api from '@/lib/api';
 import Cookies from 'js-cookie';
 
 export default function LoginPage() {
@@ -17,21 +18,16 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5000/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
+      const data = await api.post('/login', { username, password });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || 'Login failed');
-      }
-
-      // Store JWT token and role securely in cookies
-      Cookies.set('token', data.token, { expires: 1 }); // 1 day expiration
+      // Store JWT token and role securely in cookies (for middleware) and localStorage (for axios)
+      Cookies.set('token', data.token, { expires: 1 }); 
       Cookies.set('role', data.role, { expires: 1 });
+      
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role', data.role);
+      }
 
       // Redirect based on role
       if (data.role === 'admin') {
