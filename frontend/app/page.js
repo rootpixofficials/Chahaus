@@ -3,11 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import Cookies from 'js-cookie';
+import { connectPrinter, printReceipt, printViaRawBT } from '@/lib/bluetoothPrinter';
 import './pos/pos.css';
 
 export default function Home() {
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [printerCharacteristic, setPrinterCharacteristic] = useState(null);
     const [activeTab, setActiveTab] = useState('All');
     const [cart, setCart] = useState([]);
     const [view, setView] = useState('products'); 
@@ -76,6 +78,25 @@ export default function Home() {
     };
 
     const calculateTotal = () => cart.reduce((sum, item) => sum + Number(item.subtotal), 0);
+
+    const handleBluetoothPrint = async () => {
+        if (!printerCharacteristic) {
+            try {
+                const { characteristic } = await connectPrinter();
+                setPrinterCharacteristic(characteristic);
+                await printReceipt(characteristic, showReceipt);
+            } catch (err) {
+                // If direct Bluetooth fails, try RawBT intent for Android
+                printViaRawBT(showReceipt);
+            }
+        } else {
+            try {
+                await printReceipt(printerCharacteristic, showReceipt);
+            } catch (err) {
+                printViaRawBT(showReceipt);
+            }
+        }
+    };
 
     const handleCheckout = async () => {
         if (cart.length === 0) return;
@@ -381,9 +402,10 @@ export default function Home() {
                             Thank you for visiting Cha Haus!
                         </div>
                         
-                        <div className="no-print" style={{marginTop:'20px', display:'flex', gap:'10px'}}>
-                            <button onClick={() => window.print()} style={{flex:1, padding:'10px', background:'#059669', color:'white', border:'none', borderRadius:'8px', fontWeight:'bold'}}>Print Bill</button>
-                            <button onClick={() => setShowReceipt(null)} style={{flex:1, padding:'10px', background:'#e2e8f0', color:'#475569', border:'none', borderRadius:'8px', fontWeight:'bold'}}>Close</button>
+                        <div className="no-print" style={{marginTop:'20px', display:'flex', flexWrap: 'wrap', gap: '10px'}}>
+                            <button onClick={() => window.print()} style={{flex:1, minWidth: '120px', padding:'10px', background:'#059669', color:'white', border:'none', borderRadius:'8px', fontWeight:'bold'}}>Default Print</button>
+                            <button onClick={handleBluetoothPrint} style={{flex:1, minWidth: '120px', padding:'10px', background:'#be9249', color:'white', border:'none', borderRadius:'8px', fontWeight:'bold'}}>Bluetooth Print</button>
+                            <button onClick={() => setShowReceipt(null)} style={{flex:1, minWidth: '120px', padding:'10px', background:'#e2e8f0', color:'#475569', border:'none', borderRadius:'8px', fontWeight:'bold'}}>Close</button>
                         </div>
                     </div>
                 </div>
