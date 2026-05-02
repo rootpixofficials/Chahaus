@@ -103,28 +103,75 @@ export const printReceipt = async (characteristic, receiptData) => {
     }
 };
 
-// Alternative for Android RawBT Intent
+// Alternative for Android RawBT Intent using HTML for Exact Design
 export const printViaRawBT = (receiptData) => {
-    let text = "";
+    // Get absolute URL for the logo so the printer can fetch it
+    const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
 
-    text += "CHA HAUS\n";
-    text += `Bill #: ${receiptData.bill_number || ""}\n`;
-    text += `${receiptData.date || ""}\n`;
-    text += "------------------------------\n";
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: monospace; color: black; background: white; width: 100%; max-width: 380px; margin: 0; padding: 10px; }
+            .center { text-align: center; }
+            .bold { font-weight: bold; }
+            .divider { border-bottom: 1px dashed black; margin: 10px 0; }
+            .flex-between { display: flex; justify-content: space-between; }
+            table { width: 100%; border-collapse: collapse; }
+            td { padding: 4px 0; font-size: 14px; }
+            .right { text-align: right; }
+        </style>
+    </head>
+    <body>
+        <div class="center">
+            <img src="${logoUrl}" style="width:80px; height:auto; margin-bottom:5px;" onerror="this.style.display='none'" />
+            <h2 style="margin:5px 0;">CHA HAUS</h2>
+            <div style="font-size:12px;">Tea & Snacks</div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div style="font-size:12px; margin-bottom:10px;">
+            <div>No: ${receiptData.bill_number || ""}</div>
+            <div>Date: ${receiptData.date || ""}</div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <table>
+            ${(receiptData.items || []).map(item => `
+                <tr>
+                    <td>${item.quantity} x ${item.name}</td>
+                    <td class="right">Rs ${item.subtotal}</td>
+                </tr>
+            `).join('')}
+        </table>
+        
+        <div class="divider"></div>
+        
+        <div class="flex-between" style="font-size: 14px;">
+            <span>Payment Method</span>
+            <span>${receiptData.payment_method || "Cash"}</span>
+        </div>
+        
+        <div class="flex-between bold" style="font-size:18px; margin-top:8px;">
+            <span>TOTAL</span>
+            <span>Rs ${receiptData.total || 0}</span>
+        </div>
+        
+        <div class="center" style="margin-top:20px; font-size:12px;">
+            Thank you for visiting Cha Haus!<br><br><br>
+        </div>
+    </body>
+    </html>
+    `;
 
-    (receiptData.items || []).forEach(item => {
-        const name = (item.name || "").slice(0, 15);
-        text += `${item.quantity} x ${name} - ${item.subtotal}\n`;
-    });
-
-    text += "------------------------------\n";
-    text += `TOTAL: ${receiptData.total || 0}\n`;
-    text += "\nThank you!\n\n\n";
-
-    // 🔥 FIXED RAWBT CALL (Most stable method: Base64 to prevent character drops)
-    // Use unescape + encodeURIComponent to safely base64 encode any special characters
-    const safeBase64 = btoa(unescape(encodeURIComponent(text)));
-    const url = "rawbt:base64," + safeBase64;
+    // Encode HTML to Base64
+    const safeBase64 = btoa(unescape(encodeURIComponent(html)));
+    // Send to RawBT using HTML schema
+    const url = "rawbt:data:text/html;base64," + safeBase64;
 
     window.location.href = url;
 };
