@@ -24,7 +24,7 @@ export const connectPrinter = async () => {
 
 // 🔥 SAFE CHUNK SENDER (IMPORTANT FIX)
 const writeChunked = async (characteristic, data) => {
-    const chunkSize = 512; // Increased for faster transmission
+    const chunkSize = 180; // safe BLE packet size
     for (let i = 0; i < data.length; i += chunkSize) {
         const chunk = data.slice(i, i + chunkSize);
         await characteristic.writeValue(chunk);
@@ -169,13 +169,13 @@ export const printReceipt = async (characteristic, receiptData) => {
 
         // Headers
         ctx.textAlign = 'center';
-        ctx.font = 'bold 36px monospace'; // Reduced from 44
+        ctx.font = 'bold 44px monospace';
         ctx.fillText('CHA HAUS', width / 2, y);
-        y += 45; // Reduced from 55
+        y += 55;
 
-        ctx.font = '22px monospace'; // Reduced from 26
+        ctx.font = '26px monospace';
         ctx.fillText('Tea & Snacks', width / 2, y);
-        y += 35; // Reduced from 40
+        y += 40;
 
         // Divider Helper
         const drawDivider = () => {
@@ -185,62 +185,62 @@ export const printReceipt = async (characteristic, receiptData) => {
             ctx.moveTo(0, y);
             ctx.lineTo(width, y);
             ctx.stroke();
-            y += 12; // Reduced from 15
+            y += 15;
             ctx.setLineDash([]);
         };
 
         drawDivider();
-        y += 10;
+        y += 15;
 
         // Meta info
         ctx.textAlign = 'left';
-        ctx.font = '20px monospace'; // Reduced from 24
+        ctx.font = '24px monospace';
         ctx.fillText(`No: ${receiptData.bill_number || ""}`, 0, y);
-        y += 30; // Reduced from 35
+        y += 35;
         ctx.fillText(`Date: ${receiptData.date || ""}`, 0, y);
-        y += 30; // Reduced from 35
+        y += 35;
 
-        y += 10;
+        y += 15;
         drawDivider();
-        y += 10;
+        y += 15;
 
         // Items
         for (const item of (receiptData.items || [])) {
             ctx.textAlign = 'left';
-            ctx.font = '20px monospace'; // Reduced from 24
+            ctx.font = '24px monospace';
             ctx.fillText(`${item.quantity} x ${item.name}`, 0, y);
             ctx.textAlign = 'right';
             const price = parseFloat(item.subtotal || 0).toFixed(2);
             ctx.fillText(`₹${price}`, width, y);
-            y += 35; // Reduced from 40
+            y += 40;
         }
 
-        y += 8;
+        y += 10;
         drawDivider();
-        y += 12;
+        y += 15;
 
         // Payment
         ctx.textAlign = 'left';
-        ctx.font = '20px monospace'; // Reduced from 24
+        ctx.font = '24px monospace';
         ctx.fillText('Payment Method', 0, y);
         ctx.textAlign = 'right';
         ctx.fillText(`${receiptData.payment_method || "Cash"}`, width, y);
-        y += 40; // Reduced from 45
+        y += 45;
 
         // Total
-        ctx.font = 'bold 28px monospace'; // Reduced from 32
+        ctx.font = 'bold 32px monospace';
         ctx.textAlign = 'left';
         ctx.fillText('TOTAL', 0, y);
         ctx.textAlign = 'right';
         const total = parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2);
         ctx.fillText(`₹${total}`, width, y);
-        y += 50; // Reduced from 60
+        y += 60;
 
         // Footer
-        ctx.font = '20px monospace';
+        ctx.font = '24px monospace';
         ctx.textAlign = 'center';
         ctx.fillText('Thank you for visiting Cha Haus!', width / 2, y);
-        y += 50; // Reduced from 60
+        y += 60;
 
         // Crop to the final used height
         const finalCanvas = document.createElement('canvas');
