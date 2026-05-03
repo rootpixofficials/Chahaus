@@ -49,53 +49,212 @@ const CMD = {
 };
 
 
-// MAIN PRINT FUNCTION (FIXED)
+// Helper to convert any Canvas to ESC/POS image and print
+const printCanvasESC_POS = async (canvas, characteristic) => {
+    const width = canvas.width;
+    const height = canvas.height;
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const pixels = imageData.data;
+    
+    const xBytes = Math.ceil(width / 8);
+    const dataLength = xBytes * height;
+    const data = new Uint8Array(dataLength);
+
+    const gray = new Float32Array(width * height);
+    for (let i = 0; i < width * height; i++) {
+        const r = pixels[i * 4];
+        const g = pixels[i * 4 + 1];
+        const b = pixels[i * 4 + 2];
+        const a = pixels[i * 4 + 3];
+        
+        if (a < 128) {
+            gray[i] = 255;
+        } else {
+            let lum = 0.299 * r + 0.587 * g + 0.114 * b;
+            // Artificially darken the logo to make it stand out more
+            // (but keep pure white backgrounds as white to avoid speckles)
+            if (lum < 240) {
+                lum = lum * 0.5; // Darken by 50%
+            }
+            gray[i] = lum;
+        }
+    }
+
+    // Apply Floyd-Steinberg dithering to preserve logo details
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const idx = y * width + x;
+            const oldPixel = gray[idx];
+            const newPixel = oldPixel < 128 ? 0 : 255;
+            gray[idx] = newPixel;
+            
+            const err = oldPixel - newPixel;
+            
+            if (x + 1 < width) gray[idx + 1] += err * 7 / 16;
+            if (x - 1 >= 0 && y + 1 < height) gray[idx - 1 + width] += err * 3 / 16;
+            if (y + 1 < height) gray[idx + width] += err * 5 / 16;
+            if (x + 1 < width && y + 1 < height) gray[idx + 1 + width] += err * 1 / 16;
+        }
+    }
+
+    // Pack binary pixels into bytes
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const idx = y * width + x;
+            if (gray[idx] < 128) { // Black dot
+                const byteIdx = y * xBytes + Math.floor(x / 8);
+                const bitPos = 7 - (x % 8);
+                data[byteIdx] |= (1 << bitPos);
+            }
+        }
+    }
+    
+    const command = new Uint8Array(8 + dataLength);
+    command[0] = 0x1D;
+    command[1] = 0x76;
+    command[2] = 0x30;
+    command[3] = 0; // Normal mode
+    command[4] = xBytes & 0xFF; // xL
+    command[5] = (xBytes >> 8) & 0xFF; // xH
+    command[6] = height & 0xFF; // yL
+    command[7] = (height >> 8) & 0xFF; // yH
+    command.set(data, 8);
+    
+    await characteristic.writeValue(CMD.CENTER);
+    await writeChunked(characteristic, command);
+};
+
+
+// MAIN PRINT FUNCTION (FIXED FOR FULL IMAGE PRINTING)
 export const printReceipt = async (characteristic, receiptData) => {
     try {
         await characteristic.writeValue(CMD.INIT);
 
-        // HEADER
-        await characteristic.writeValue(CMD.CENTER);
-        await characteristic.writeValue(CMD.BOLD_ON);
-        await writeChunked(characteristic, textEncode("CHA HAUS\n"));
-        await characteristic.writeValue(CMD.BOLD_OFF);
+        const width = 384; // Standard 58mm printer width
+        let y = 0;
 
-        await writeChunked(characteristic, textEncode(
-            `Bill #: ${receiptData.bill_number || ""}\n` +
-            `${receiptData.date || ""}\n` +
-            "------------------------------\n"
-        ));
+        // Use a very tall canvas, we will crop it down later
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = 2000; 
+        const ctx = canvas.getContext('2d');
+        
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, width, canvas.height);
+        
+        ctx.fillStyle = 'black';
+        ctx.textBaseline = 'top';
 
-        // ITEMS
-        await characteristic.writeValue(CMD.LEFT);
+        // Disable smoothing to prevent blurry logo blobs
+        ctx.imageSmoothingEnabled = false;
 
-        for (const item of receiptData.items || []) {
-            const name = (item.name || "").slice(0, 18); // prevent overflow
-            const qty = item.quantity || 0;
-            const subtotal = item.subtotal || 0;
-
-            const line = `${qty} x ${name} - ${subtotal}\n`;
-            await writeChunked(characteristic, textEncode(line));
+        // Load Logo
+        const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
+        try {
+            const img = await new Promise((resolve, reject) => {
+                const i = new Image();
+                i.crossOrigin = "Anonymous";
+                i.onload = () => resolve(i);
+                i.onerror = reject;
+                i.src = logoUrl;
+            });
+            const logoW = 320;
+            const logoH = Math.round((img.height / img.width) * logoW);
+            ctx.drawImage(img, (width - logoW) / 2, y, logoW, logoH);
+            y += logoH + 15;
+        } catch (e) {
+            console.error("Failed to load logo", e);
         }
 
-        // FOOTER
-        await writeChunked(characteristic, textEncode(
-            "------------------------------\n"
-        ));
+        // Headers
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 44px monospace';
+        ctx.fillText('CHA HAUS', width / 2, y);
+        y += 55;
 
+        ctx.font = '26px monospace';
+        ctx.fillText('Tea & Snacks', width / 2, y);
+        y += 40;
+
+        // Divider Helper
+        const drawDivider = () => {
+            ctx.setLineDash([4, 4]);
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+            ctx.stroke();
+            y += 15;
+            ctx.setLineDash([]);
+        };
+
+        drawDivider();
+        y += 15;
+
+        // Meta info
+        ctx.textAlign = 'left';
+        ctx.font = '24px monospace';
+        ctx.fillText(`No: ${receiptData.bill_number || ""}`, 0, y);
+        y += 35;
+        ctx.fillText(`Date: ${receiptData.date || ""}`, 0, y);
+        y += 35;
+
+        y += 15;
+        drawDivider();
+        y += 15;
+
+        // Items
+        for (const item of (receiptData.items || [])) {
+            ctx.textAlign = 'left';
+            ctx.font = '24px monospace';
+            ctx.fillText(`${item.quantity} x ${item.name}`, 0, y);
+            ctx.textAlign = 'right';
+            const price = parseFloat(item.subtotal || 0).toFixed(2);
+            ctx.fillText(`₹${price}`, width, y);
+            y += 40;
+        }
+
+        y += 10;
+        drawDivider();
+        y += 15;
+
+        // Payment
+        ctx.textAlign = 'left';
+        ctx.font = '24px monospace';
+        ctx.fillText('Payment Method', 0, y);
+        ctx.textAlign = 'right';
+        ctx.fillText(`${receiptData.payment_method || "Cash"}`, width, y);
+        y += 45;
+
+        // Total
+        ctx.font = 'bold 32px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText('TOTAL', 0, y);
+        ctx.textAlign = 'right';
+        const total = parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2);
+        ctx.fillText(`₹${total}`, width, y);
+        y += 60;
+
+        // Footer
+        ctx.font = '24px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('Thank you for visiting Cha Haus!', width / 2, y);
+        y += 60;
+
+        // Crop to the final used height
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = width;
+        finalCanvas.height = y;
+        const fCtx = finalCanvas.getContext('2d');
+        fCtx.drawImage(canvas, 0, 0);
+
+        // Convert exactly the drawn layout to POS Image and print it
+        await printCanvasESC_POS(finalCanvas, characteristic);
+        
+        // Feed paper slightly and cut
         await characteristic.writeValue(CMD.CENTER);
-        await characteristic.writeValue(CMD.BOLD_ON);
-
-        await writeChunked(characteristic, textEncode(
-            `TOTAL: ${receiptData.total || 0}\n`
-        ));
-
-        await characteristic.writeValue(CMD.BOLD_OFF);
-
-        await writeChunked(characteristic, textEncode(
-            "\nThank you!\n\n"
-        ));
-
+        await writeChunked(characteristic, textEncode("\n\n\n"));
         await characteristic.writeValue(CMD.CUT);
 
     } catch (err) {

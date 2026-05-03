@@ -51,5 +51,5 @@ export const config = {
   // - _next/image (image optimization files)
   // - favicon.ico (favicon file)
   // - login (login page)
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|login).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|login|sw.js|manifest.webmanifest|icons|Image).*)'],
 };

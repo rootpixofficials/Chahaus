@@ -8,17 +8,36 @@ import authRoutes from './routes/AuthRoutes.js';
 import adminRoutes from './routes/AdminRoutes.js';
 import customerRoutes from './routes/CustomerRoutes.js';
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+import fs from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: [
+    'http://localhost:3000', 
+    'http://localhost:3001', 
+    'https://chahaus.space', 
+    'https://www.chahaus.space'
+  ],
   credentials: true
 }));
 app.use(express.json());
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(uploadsDir));
 
 // Initialize Database connection
 database();

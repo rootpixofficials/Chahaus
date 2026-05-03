@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build",
-    "start": "next start",
+    "start": "NEXT_PUBLIC_API_URL=https://api.chahaus.space/api next start -p 3001",
     "lint": "eslint"
   },
   "dependencies": {
