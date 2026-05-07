@@ -74,105 +74,124 @@ const canvasToESC_POS_Data = (canvas) => {
     return command;
 };
 
+const drawReceiptCanvas = async (receiptData) => {
+    const width = 384;
+    let totalY = 0;
+
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = width;
+    tempCanvas.height = 3000;
+    const ctx = tempCanvas.getContext('2d');
+    
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, width, tempCanvas.height);
+    ctx.fillStyle = 'black';
+    ctx.textBaseline = 'top';
+    ctx.imageSmoothingEnabled = false;
+
+    // Bolder font stack to make text darker/thicker as requested
+    const FONT_HEADER = "bold 34px 'Courier New', Courier, monospace";
+    const FONT_BODY = "bold 20px 'Courier New', Courier, monospace"; 
+    const FONT_SMALL = "bold 16px 'Courier New', Courier, monospace";
+    const FONT_TOTAL = "bold 26px 'Courier New', Courier, monospace";
+
+    // 1. LOGO (Centered, slightly smaller to match requested design)
+    const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
+    try {
+        const img = await new Promise((resolve, reject) => {
+            const i = new Image(); i.crossOrigin = "Anonymous";
+            i.onload = () => resolve(i); i.onerror = reject; i.src = logoUrl;
+        });
+        const logoW = 160; 
+        const logoH = Math.round((img.height / img.width) * logoW);
+        ctx.drawImage(img, (width - logoW) / 2, totalY, logoW, logoH);
+        totalY += logoH + 20; 
+    } catch (e) {}
+
+    // 2. HEADERS
+    ctx.textAlign = 'center';
+    ctx.font = FONT_HEADER;
+    ctx.fillText('CHA HAUS', width / 2, totalY);
+    totalY += 40;
+    ctx.font = FONT_BODY;
+    ctx.fillText('Tea & Snacks', width / 2, totalY);
+    totalY += 35;
+
+    const drawDivider = () => {
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(0, totalY); ctx.lineTo(width, totalY); ctx.stroke();
+        totalY += 15; ctx.setLineDash([]);
+    };
+    
+    drawDivider();
+
+    // 3. META
+    ctx.textAlign = 'left';
+    ctx.font = FONT_BODY;
+    ctx.fillText(`No: ${receiptData.bill_number || ""}`, 0, totalY);
+    totalY += 28;
+    ctx.fillText(`Date: ${receiptData.date || ""}`, 0, totalY);
+    totalY += 28;
+    
+    drawDivider();
+
+    // 4. ITEMS
+    for (const item of (receiptData.items || [])) {
+        ctx.textAlign = 'left';
+        ctx.font = FONT_BODY;
+        ctx.fillText(`${item.quantity} x ${item.name}`, 0, totalY);
+        ctx.textAlign = 'right';
+        ctx.fillText(`₹${parseFloat(item.subtotal || 0).toFixed(2)}`, width, totalY);
+        totalY += 35;
+    }
+    
+    drawDivider();
+
+    // 5. PAYMENT METHOD & TOTAL (Added Payment Method)
+    ctx.textAlign = 'left';
+    ctx.font = FONT_BODY;
+    ctx.fillText('Payment Method', 0, totalY);
+    ctx.textAlign = 'right';
+    ctx.fillText(receiptData.payment_method || "Cash", width, totalY);
+    totalY += 35;
+
+    ctx.textAlign = 'left';
+    ctx.font = FONT_TOTAL;
+    ctx.fillText('TOTAL', 0, totalY);
+    ctx.textAlign = 'right';
+    ctx.fillText(`₹${parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2)}`, width, totalY);
+    totalY += 60; // Extra space before footer
+
+    // 6. FOOTER
+    ctx.textAlign = 'center';
+    ctx.font = FONT_SMALL;
+    ctx.fillText('Thank you for visiting Cha Haus!', width / 2, totalY);
+    totalY += 60;
+
+    // Crop canvas
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = width;
+    finalCanvas.height = totalY;
+    finalCanvas.getContext('2d').drawImage(tempCanvas, 0, 0, width, totalY, 0, 0, width, totalY);
+
+    return finalCanvas;
+};
+
 // 🚀 STRIP-BY-STRIP PRINTING
 export const printReceipt = async (characteristic, receiptData) => {
     try {
         if (!characteristic) throw new Error("Printer not connected");
         await characteristic.writeValue(CMD.INIT);
 
-        const width = 384;
-        let totalY = 0;
-
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = width;
-        tempCanvas.height = 3000;
-        const ctx = tempCanvas.getContext('2d');
+        const canvas = await drawReceiptCanvas(receiptData);
         
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, width, tempCanvas.height);
-        ctx.fillStyle = 'black';
-        ctx.textBaseline = 'top';
-        ctx.imageSmoothingEnabled = false;
-
-        // --- REQUESTED FONT SIZES ---
-        const FONT_HEADER = "bold 34px 'Courier New', monospace";
-        const FONT_BODY = "20px 'Courier New', monospace";
-        const FONT_SMALL = "16px 'Courier New', monospace";
-        const FONT_TOTAL = "bold 26px 'Courier New', monospace";
-
-        // 1. LOGO (Restored width)
-        const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
-        try {
-            const img = await new Promise((resolve, reject) => {
-                const i = new Image(); i.crossOrigin = "Anonymous";
-                i.onload = () => resolve(i); i.onerror = reject; i.src = logoUrl;
-            });
-            const logoW = 280; 
-            const logoH = Math.round((img.height / img.width) * logoW);
-            ctx.drawImage(img, (width - logoW) / 2, totalY, logoW, logoH);
-            totalY += logoH + 10;
-        } catch (e) {}
-
-        // 2. HEADERS
-        ctx.textAlign = 'center';
-        ctx.font = FONT_HEADER;
-        ctx.fillText('CHA HAUS', width / 2, totalY);
-        totalY += 42;
-        ctx.font = FONT_BODY;
-        ctx.fillText('Tea & Snacks', width / 2, totalY);
-        totalY += 32;
-
-        const drawDivider = () => {
-            ctx.setLineDash([4, 4]);
-            ctx.beginPath(); ctx.moveTo(0, totalY); ctx.lineTo(width, totalY); ctx.stroke();
-            totalY += 12; ctx.setLineDash([]);
-        };
-        drawDivider();
-        totalY += 8;
-
-        // 3. META
-        ctx.textAlign = 'left';
-        ctx.font = FONT_BODY;
-        ctx.fillText(`No: ${receiptData.bill_number || ""}`, 0, totalY);
-        totalY += 28;
-        ctx.fillText(`Date: ${receiptData.date || ""}`, 0, totalY);
-        totalY += 28;
-        drawDivider();
-        totalY += 8;
-
-        // 4. ITEMS
-        for (const item of (receiptData.items || [])) {
-            ctx.textAlign = 'left';
-            ctx.font = FONT_BODY;
-            ctx.fillText(`${item.quantity} x ${item.name}`, 0, totalY);
-            ctx.textAlign = 'right';
-            ctx.fillText(`₹${parseFloat(item.subtotal || 0).toFixed(2)}`, width, totalY);
-            totalY += 35;
-        }
-        drawDivider();
-        totalY += 10;
-
-        // 5. TOTAL
-        ctx.textAlign = 'left';
-        ctx.font = FONT_TOTAL;
-        ctx.fillText('TOTAL', 0, totalY);
-        ctx.textAlign = 'right';
-        ctx.fillText(`₹${parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2)}`, width, totalY);
-        totalY += 50;
-
-        ctx.textAlign = 'center';
-        ctx.font = FONT_SMALL;
-        ctx.fillText('Thank you for visiting Cha Haus!', width / 2, totalY);
-        totalY += 60;
-
-        // 6. PRINT IN STRIPS
         const stripHeight = 200; // Larger strips for Byju's Tab CPU efficiency
-        for (let currentY = 0; currentY < totalY; currentY += stripHeight) {
-            const h = Math.min(stripHeight, totalY - currentY);
+        for (let currentY = 0; currentY < canvas.height; currentY += stripHeight) {
+            const h = Math.min(stripHeight, canvas.height - currentY);
             const stripCanvas = document.createElement('canvas');
-            stripCanvas.width = width;
+            stripCanvas.width = canvas.width;
             stripCanvas.height = h;
-            stripCanvas.getContext('2d').drawImage(tempCanvas, 0, currentY, width, h, 0, 0, width, h);
+            stripCanvas.getContext('2d').drawImage(canvas, 0, currentY, canvas.width, h, 0, 0, canvas.width, h);
             
             const escData = canvasToESC_POS_Data(stripCanvas);
             await writeChunked(characteristic, escData);
@@ -188,96 +207,12 @@ export const printReceipt = async (characteristic, receiptData) => {
 
 export const printViaRawBT = async (receiptData) => {
     try {
-        const width = 384;
-        let totalY = 0;
-
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = width;
-        tempCanvas.height = 3000;
-        const ctx = tempCanvas.getContext('2d');
-        
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, width, tempCanvas.height);
-        ctx.fillStyle = 'black';
-        ctx.textBaseline = 'top';
-        ctx.imageSmoothingEnabled = false;
-
-        const FONT_HEADER = "bold 34px 'Courier New', monospace";
-        const FONT_BODY = "20px 'Courier New', monospace";
-        const FONT_SMALL = "16px 'Courier New', monospace";
-        const FONT_TOTAL = "bold 26px 'Courier New', monospace";
-
-        const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
-        try {
-            const img = await new Promise((resolve, reject) => {
-                const i = new Image(); i.crossOrigin = "Anonymous";
-                i.onload = () => resolve(i); i.onerror = reject; i.src = logoUrl;
-            });
-            const logoW = 280; 
-            const logoH = Math.round((img.height / img.width) * logoW);
-            ctx.drawImage(img, (width - logoW) / 2, totalY, logoW, logoH);
-            totalY += logoH + 10;
-        } catch (e) {}
-
-        ctx.textAlign = 'center';
-        ctx.font = FONT_HEADER;
-        ctx.fillText('CHA HAUS', width / 2, totalY);
-        totalY += 42;
-        ctx.font = FONT_BODY;
-        ctx.fillText('Tea & Snacks', width / 2, totalY);
-        totalY += 32;
-
-        const drawDivider = () => {
-            ctx.setLineDash([4, 4]);
-            ctx.beginPath(); ctx.moveTo(0, totalY); ctx.lineTo(width, totalY); ctx.stroke();
-            totalY += 12; ctx.setLineDash([]);
-        };
-        drawDivider();
-        totalY += 8;
-
-        ctx.textAlign = 'left';
-        ctx.font = FONT_BODY;
-        ctx.fillText(`No: ${receiptData.bill_number || ""}`, 0, totalY);
-        totalY += 28;
-        ctx.fillText(`Date: ${receiptData.date || ""}`, 0, totalY);
-        totalY += 28;
-        drawDivider();
-        totalY += 8;
-
-        for (const item of (receiptData.items || [])) {
-            ctx.textAlign = 'left';
-            ctx.font = FONT_BODY;
-            ctx.fillText(`${item.quantity} x ${item.name}`, 0, totalY);
-            ctx.textAlign = 'right';
-            ctx.fillText(`₹${parseFloat(item.subtotal || 0).toFixed(2)}`, width, totalY);
-            totalY += 35;
-        }
-        drawDivider();
-        totalY += 10;
-
-        ctx.textAlign = 'left';
-        ctx.font = FONT_TOTAL;
-        ctx.fillText('TOTAL', 0, totalY);
-        ctx.textAlign = 'right';
-        ctx.fillText(`₹${parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2)}`, width, totalY);
-        totalY += 50;
-
-        ctx.textAlign = 'center';
-        ctx.font = FONT_SMALL;
-        ctx.fillText('Thank you for visiting Cha Haus!', width / 2, totalY);
-        totalY += 60;
-
-        // Crop canvas to actual height so we don't print blank space
-        const finalCanvas = document.createElement('canvas');
-        finalCanvas.width = width;
-        finalCanvas.height = totalY;
-        finalCanvas.getContext('2d').drawImage(tempCanvas, 0, 0, width, totalY, 0, 0, width, totalY);
+        const canvas = await drawReceiptCanvas(receiptData);
 
         // Convert the exact canvas to a PNG and send to RawBT instantly
-        const dataUrl = finalCanvas.toDataURL("image/png");
+        const dataUrl = canvas.toDataURL("image/png");
         const rawbtUrl = dataUrl.replace("data:", "rawbt:data:");
         window.location.href = rawbtUrl;
-
     } catch (err) {
         console.error("RawBT Canvas Print Error:", err);
     }
