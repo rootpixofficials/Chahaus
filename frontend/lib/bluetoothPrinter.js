@@ -89,90 +89,91 @@ const drawReceiptCanvas = async (receiptData) => {
     ctx.textBaseline = 'top';
     ctx.imageSmoothingEnabled = false;
 
-    // Increased font sizes as requested, kept bold for darkness
-    const FONT_HEADER = "bold 34px 'Courier New', Courier, monospace";
-    const FONT_BODY = "bold 22px 'Courier New', Courier, monospace"; 
-    const FONT_SMALL = "bold 20px 'Courier New', Courier, monospace";
-    const FONT_TOTAL = "bold 30px 'Courier New', Courier, monospace";
+    // To perfectly match the hardware receipt width of 32 characters, 
+    // we use exactly 20px font size which gives a 12px character width (12 * 32 = 384).
+    const FONT_REGULAR = "20px 'Courier New', monospace";
+    const FONT_BOLD = "bold 20px 'Courier New', monospace";
+    const FONT_TITLE = "bold 34px 'Courier New', monospace";
+    const FONT_TOTAL = "bold 28px 'Courier New', monospace";
 
-    // 1. LOGO (Increased size)
+    // 1. LOGO
     const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
     try {
         const img = await new Promise((resolve, reject) => {
             const i = new Image(); i.crossOrigin = "Anonymous";
             i.onload = () => resolve(i); i.onerror = reject; i.src = logoUrl;
         });
-        const logoW = 200; 
+        const logoW = 120; // Exact size from image
         const logoH = Math.round((img.height / img.width) * logoW);
         ctx.drawImage(img, (width - logoW) / 2, totalY, logoW, logoH);
-        totalY += logoH + 30; 
+        totalY += logoH + 20; 
     } catch (e) {}
 
     // 2. HEADERS
     ctx.textAlign = 'center';
-    ctx.font = FONT_HEADER;
-    ctx.fillText('CHA HAUS', width / 2, totalY);
-    totalY += 45;
-    ctx.font = FONT_BODY;
+    ctx.font = FONT_TITLE;
+    ctx.fillText('CHA  HAUS', width / 2, totalY); // Added extra space between CHA and HAUS like in the image
+    totalY += 38;
+    ctx.font = FONT_REGULAR;
     ctx.fillText('Tea & Snacks', width / 2, totalY);
-    totalY += 45;
+    totalY += 40;
 
-    const drawDivider = () => {
-        ctx.setLineDash([6, 6]);
-        ctx.beginPath(); ctx.moveTo(0, totalY); ctx.lineTo(width, totalY); ctx.stroke();
-        totalY += 20; ctx.setLineDash([]);
+    const printLine = (text, isBold = false) => {
+        ctx.font = isBold ? FONT_BOLD : FONT_REGULAR;
+        ctx.textAlign = 'left';
+        ctx.fillText(text, 0, totalY);
+        totalY += 24; // Standard line height
     };
-    
-    drawDivider();
+
+    const drawDashedLine = () => {
+        // Exactly 32 hyphens to match hardware receipt look
+        printLine("--------------------------------");
+    };
+
+    // Helper to align text left and right perfectly across 32 characters
+    const formatRow = (left, right) => {
+        const maxLeft = 32 - right.length - 1; // leave at least 1 space
+        let leftStr = left;
+        if (leftStr.length > maxLeft) {
+            leftStr = leftStr.substring(0, maxLeft - 2) + "..";
+        }
+        const spaces = 32 - leftStr.length - right.length;
+        return leftStr + ' '.repeat(spaces > 0 ? spaces : 1) + right;
+    };
+
+    drawDashedLine();
 
     // 3. META
-    ctx.textAlign = 'left';
-    ctx.font = FONT_BODY;
-    ctx.fillText(`No: ${receiptData.bill_number || ""}`, 0, totalY);
-    totalY += 32;
-    ctx.fillText(`Date: ${receiptData.date || ""}`, 0, totalY);
-    totalY += 35;
+    printLine(`No: ${receiptData.bill_number || ""}`);
+    printLine(`Date: ${receiptData.date || ""}`);
     
-    drawDivider();
+    drawDashedLine();
 
     // 4. ITEMS
     for (const item of (receiptData.items || [])) {
-        ctx.textAlign = 'left';
-        ctx.font = FONT_BODY;
-        
-        // Truncate long names to prevent overlap with price
-        let itemName = `${item.quantity} x ${item.name}`;
-        if (itemName.length > 20) itemName = itemName.substring(0, 18) + '..';
-
-        ctx.fillText(itemName, 0, totalY);
-        ctx.textAlign = 'right';
-        ctx.fillText(`₹${parseFloat(item.subtotal || 0).toFixed(2)}`, width, totalY);
-        totalY += 38;
+        const left = `${item.quantity} x ${item.name}`;
+        const right = `₹${parseFloat(item.subtotal || 0).toFixed(2)}`;
+        printLine(formatRow(left, right));
     }
     
-    totalY += 5; // Spacing before the item divider
-    drawDivider();
+    drawDashedLine();
 
     // 5. PAYMENT METHOD & TOTAL
-    ctx.textAlign = 'left';
-    ctx.font = FONT_BODY;
-    ctx.fillText('Payment Method', 0, totalY);
-    ctx.textAlign = 'right';
-    ctx.fillText(receiptData.payment_method || "Cash", width, totalY);
-    totalY += 45;
-
-    ctx.textAlign = 'left';
+    printLine(formatRow('Payment Method', receiptData.payment_method || "Cash"));
+    
+    totalY += 10;
     ctx.font = FONT_TOTAL;
+    ctx.textAlign = 'left';
     ctx.fillText('TOTAL', 0, totalY);
     ctx.textAlign = 'right';
     ctx.fillText(`₹${parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2)}`, width, totalY);
-    totalY += 70; // Huge space before footer
+    totalY += 60; // Huge space before footer
 
     // 6. FOOTER
     ctx.textAlign = 'center';
-    ctx.font = FONT_SMALL;
+    ctx.font = FONT_REGULAR;
     ctx.fillText('Thank you for visiting Cha Haus!', width / 2, totalY);
-    totalY += 70;
+    totalY += 60;
 
     // Crop canvas
     const finalCanvas = document.createElement('canvas');
