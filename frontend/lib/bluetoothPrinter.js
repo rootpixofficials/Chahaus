@@ -92,11 +92,11 @@ const drawReceiptCanvas = async (receiptData) => {
     // TOP PADDING: so the printer blade does not cut the logo
     totalY += 60; 
 
-    // Universally bolder and larger fonts
-    const FONT_REGULAR = "bold 24px 'Courier New', Courier, monospace"; 
-    const FONT_TITLE = "900 38px 'Courier New', Courier, monospace";
-    const FONT_TOTAL = "900 32px 'Courier New', Courier, monospace";
-    const FONT_INSTA = "bold 24px 'Courier New', Courier, monospace";
+    // Universally bolder fonts using requested sizes
+    const FONT_REGULAR = "bold 20px 'Courier New', Courier, monospace"; 
+    const FONT_TITLE = "900 34px 'Courier New', Courier, monospace";
+    const FONT_TOTAL = "900 26px 'Courier New', Courier, monospace";
+    const FONT_INSTA = "bold 20px 'Courier New', Courier, monospace";
 
     // 1. LOGO
     const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
@@ -105,7 +105,7 @@ const drawReceiptCanvas = async (receiptData) => {
             const i = new Image(); i.crossOrigin = "Anonymous";
             i.onload = () => resolve(i); i.onerror = reject; i.src = logoUrl;
         });
-        const logoW = 240; 
+        const logoW = 280; // Restored to 280px as requested
         const logoH = Math.round((img.height / img.width) * logoW);
         ctx.drawImage(img, (width - logoW) / 2, totalY, logoW, logoH);
         totalY += logoH + 50; // GAP BETWEEN LOGO AND CHA HAUS
