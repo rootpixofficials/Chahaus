@@ -1,5 +1,5 @@
 // Bluetooth Thermal Printer Library for Cha Haus
-// ADAPTIVE PRINTING (High Speed for Laptop, Stable Speed for Tablet)
+// UNIVERSAL TURBO PRINTING (Same Design & Speed for Laptop & Tablet)
 
 export const connectPrinter = async () => {
     try {
@@ -15,10 +15,7 @@ export const connectPrinter = async () => {
             char.properties.write || char.properties.writeWithoutResponse
         );
 
-        if (!writeCharacteristic) {
-            throw new Error("Could not find a write-capable characteristic.");
-        }
-
+        if (!writeCharacteristic) throw new Error("No write characteristic found.");
         return { characteristic: writeCharacteristic };
     } catch (error) {
         console.error("Bluetooth Connection Error:", error);
@@ -26,21 +23,12 @@ export const connectPrinter = async () => {
     }
 };
 
-// 🔥 ADAPTIVE CHUNK SENDER
+// 🔥 UNIVERSAL TURBO CHUNK SENDER (High Speed for all devices)
 const writeChunked = async (characteristic, data) => {
-    // Detect if device is a Mobile/Tablet
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // We use a safe chunk size but minimal delay for maximum speed
+    const chunkSize = 128; 
+    const delay = 3; // 3ms is the "Goldilocks" delay for both PC and Tablet stability
     
-    // Laptop (Desktop) settings - EXACTLY as requested
-    let chunkSize = 100;
-    let delay = 2;
-
-    // Tablet (Mobile) settings - Optimized for mobile Bluetooth radios
-    if (isMobile) {
-        chunkSize = 64; // Smaller packets prevent mobile buffer overflow
-        delay = 8;      // More breathing room for tablet hardware
-    }
-
     for (let i = 0; i < data.length; i += chunkSize) {
         const chunk = data.slice(i, i + chunkSize);
         
@@ -62,7 +50,7 @@ const CMD = {
     CUT: new Uint8Array([0x1D, 0x56, 66, 0])
 };
 
-// Helper to convert Canvas to ESC/POS Image Data
+// Optimized Image Processing (Fast for Tablet CPUs)
 const canvasToESC_POS_Data = (canvas) => {
     const width = canvas.width;
     const height = canvas.height;
@@ -72,37 +60,30 @@ const canvasToESC_POS_Data = (canvas) => {
     
     const xBytes = Math.ceil(width / 8);
     const data = new Uint8Array(xBytes * height);
-    const gray = new Float32Array(width * height);
+    const gray = new Uint8Array(width * height);
 
+    // 1. Fast Grayscale + Alpha Handling
     for (let i = 0; i < width * height; i++) {
-        const a = pixels[i * 4 + 3];
-        if (a < 128) {
+        const idx = i * 4;
+        const r = pixels[idx];
+        const g = pixels[idx + 1];
+        const b = pixels[idx + 2];
+        const a = pixels[idx + 3];
+        
+        // If transparent, force white. Otherwise, do high-contrast gray.
+        if (a < 10) {
             gray[i] = 255;
         } else {
-            let lum = 0.299 * pixels[i * 4] + 0.587 * pixels[i * 4 + 1] + 0.114 * pixels[i * 4 + 2];
-            if (lum < 240) lum = lum * 0.5;
-            gray[i] = lum;
+            // High contrast conversion: (R+G+B)/3
+            let lum = (r + g + b) / 3;
+            gray[i] = lum < 200 ? 0 : 255; // Aggressive black/white for clarity
         }
     }
 
-    // Floyd-Steinberg Dithering
+    // 2. Bit Packing (Skip Dithering for sharper text/logos)
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            const idx = y * width + x;
-            const oldPixel = gray[idx];
-            const newPixel = oldPixel < 128 ? 0 : 255;
-            gray[idx] = newPixel;
-            const err = oldPixel - newPixel;
-            if (x + 1 < width) gray[idx + 1] += err * 7 / 16;
-            if (x - 1 >= 0 && y + 1 < height) gray[idx - 1 + width] += err * 3 / 16;
-            if (y + 1 < height) gray[idx + width] += err * 5 / 16;
-            if (x + 1 < width && y + 1 < height) gray[idx + 1 + width] += err * 1 / 16;
-        }
-    }
-
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            if (gray[y * width + x] < 128) {
+            if (gray[y * width + x] === 0) {
                 const byteIdx = y * xBytes + Math.floor(x / 8);
                 data[byteIdx] |= (1 << (7 - (x % 8)));
             }
@@ -128,11 +109,21 @@ export const printReceipt = async (characteristic, receiptData) => {
         tempCanvas.width = width;
         tempCanvas.height = 3000;
         const ctx = tempCanvas.getContext('2d');
+        
+        // Ensure pure white background (prevents gray splotches on tablet)
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, width, tempCanvas.height);
+        
         ctx.fillStyle = 'black';
         ctx.textBaseline = 'top';
+        ctx.imageSmoothingEnabled = false; // Keep it sharp
 
+        // Use a consistent font stack across platforms
+        const FONT_BOLD = "bold 36px 'Courier New', monospace";
+        const FONT_NORMAL = "22px 'Courier New', monospace";
+        const FONT_SMALL = "20px 'Courier New', monospace";
+
+        // 1. LOGO
         const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
         try {
             const img = await new Promise((resolve, reject) => {
@@ -141,15 +132,21 @@ export const printReceipt = async (characteristic, receiptData) => {
             });
             const logoW = 280;
             const logoH = Math.round((img.height / img.width) * logoW);
+            
+            // Clear logo area to pure white again just in case
+            ctx.fillStyle = 'white';
+            ctx.fillRect((width - logoW) / 2, totalY, logoW, logoH);
             ctx.drawImage(img, (width - logoW) / 2, totalY, logoW, logoH);
             totalY += logoH + 10;
         } catch (e) {}
 
+        // 2. HEADERS
+        ctx.fillStyle = 'black';
         ctx.textAlign = 'center';
-        ctx.font = 'bold 36px monospace';
+        ctx.font = FONT_BOLD;
         ctx.fillText('CHA HAUS', width / 2, totalY);
         totalY += 45;
-        ctx.font = '22px monospace';
+        ctx.font = FONT_NORMAL;
         ctx.fillText('Tea & Snacks', width / 2, totalY);
         totalY += 35;
 
@@ -161,8 +158,9 @@ export const printReceipt = async (characteristic, receiptData) => {
         drawDivider();
         totalY += 8;
 
+        // 3. META
         ctx.textAlign = 'left';
-        ctx.font = '22px monospace';
+        ctx.font = FONT_NORMAL;
         ctx.fillText(`No: ${receiptData.bill_number || ""}`, 0, totalY);
         totalY += 30;
         ctx.fillText(`Date: ${receiptData.date || ""}`, 0, totalY);
@@ -170,9 +168,10 @@ export const printReceipt = async (characteristic, receiptData) => {
         drawDivider();
         totalY += 8;
 
+        // 4. ITEMS
         for (const item of (receiptData.items || [])) {
             ctx.textAlign = 'left';
-            ctx.font = '22px monospace';
+            ctx.font = FONT_NORMAL;
             ctx.fillText(`${item.quantity} x ${item.name}`, 0, totalY);
             ctx.textAlign = 'right';
             ctx.fillText(`₹${parseFloat(item.subtotal || 0).toFixed(2)}`, width, totalY);
@@ -181,21 +180,21 @@ export const printReceipt = async (characteristic, receiptData) => {
         drawDivider();
         totalY += 10;
 
+        // 5. TOTAL
         ctx.textAlign = 'left';
-        ctx.font = 'bold 28px monospace';
+        ctx.font = "bold 28px 'Courier New', monospace";
         ctx.fillText('TOTAL', 0, totalY);
         ctx.textAlign = 'right';
         ctx.fillText(`₹${parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2)}`, width, totalY);
         totalY += 50;
 
         ctx.textAlign = 'center';
-        ctx.font = '20px monospace';
+        ctx.font = FONT_SMALL;
         ctx.fillText('Thank you for visiting Cha Haus!', width / 2, totalY);
         totalY += 60;
 
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        const stripHeight = isMobile ? 180 : 120; // Larger strips for tablet to reduce CPU overhead
-
+        // 6. PRINT IN STRIPS
+        const stripHeight = 150; 
         for (let currentY = 0; currentY < totalY; currentY += stripHeight) {
             const h = Math.min(stripHeight, totalY - currentY);
             const stripCanvas = document.createElement('canvas');
