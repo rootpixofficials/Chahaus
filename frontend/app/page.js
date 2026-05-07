@@ -80,6 +80,13 @@ export default function Home() {
     const calculateTotal = () => cart.reduce((sum, item) => sum + Number(item.subtotal), 0);
 
     const handleBluetoothPrint = async () => {
+        // Automatically route Tablet/Mobile users to RawBT for maximum speed and stability
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobile) {
+            printViaRawBT(showReceipt);
+            return;
+        }
+
         let currentCharacteristic = printerCharacteristic;
         
         // If we have a characteristic but the device disconnected, force a reconnect
@@ -117,6 +124,14 @@ export default function Home() {
             total_amount: 150,
             payment_method: "Test"
         };
+
+        // Automatically route Tablet/Mobile users to RawBT
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobile) {
+            printViaRawBT(testReceipt);
+            return;
+        }
+
         try {
             let currentCharacteristic = printerCharacteristic;
             
