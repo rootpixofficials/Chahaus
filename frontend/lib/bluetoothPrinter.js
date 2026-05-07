@@ -89,38 +89,38 @@ const drawReceiptCanvas = async (receiptData) => {
     ctx.textBaseline = 'top';
     ctx.imageSmoothingEnabled = false;
 
-    // Bolder font stack to make text darker/thicker as requested
+    // Increased font sizes as requested, kept bold for darkness
     const FONT_HEADER = "bold 34px 'Courier New', Courier, monospace";
-    const FONT_BODY = "bold 20px 'Courier New', Courier, monospace"; 
-    const FONT_SMALL = "bold 16px 'Courier New', Courier, monospace";
-    const FONT_TOTAL = "bold 26px 'Courier New', Courier, monospace";
+    const FONT_BODY = "bold 22px 'Courier New', Courier, monospace"; 
+    const FONT_SMALL = "bold 20px 'Courier New', Courier, monospace";
+    const FONT_TOTAL = "bold 30px 'Courier New', Courier, monospace";
 
-    // 1. LOGO (Centered, slightly smaller to match requested design)
+    // 1. LOGO (Increased size)
     const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
     try {
         const img = await new Promise((resolve, reject) => {
             const i = new Image(); i.crossOrigin = "Anonymous";
             i.onload = () => resolve(i); i.onerror = reject; i.src = logoUrl;
         });
-        const logoW = 160; 
+        const logoW = 200; 
         const logoH = Math.round((img.height / img.width) * logoW);
         ctx.drawImage(img, (width - logoW) / 2, totalY, logoW, logoH);
-        totalY += logoH + 20; 
+        totalY += logoH + 30; 
     } catch (e) {}
 
     // 2. HEADERS
     ctx.textAlign = 'center';
     ctx.font = FONT_HEADER;
     ctx.fillText('CHA HAUS', width / 2, totalY);
-    totalY += 40;
+    totalY += 45;
     ctx.font = FONT_BODY;
     ctx.fillText('Tea & Snacks', width / 2, totalY);
-    totalY += 35;
+    totalY += 45;
 
     const drawDivider = () => {
-        ctx.setLineDash([4, 4]);
+        ctx.setLineDash([6, 6]);
         ctx.beginPath(); ctx.moveTo(0, totalY); ctx.lineTo(width, totalY); ctx.stroke();
-        totalY += 15; ctx.setLineDash([]);
+        totalY += 20; ctx.setLineDash([]);
     };
     
     drawDivider();
@@ -129,9 +129,9 @@ const drawReceiptCanvas = async (receiptData) => {
     ctx.textAlign = 'left';
     ctx.font = FONT_BODY;
     ctx.fillText(`No: ${receiptData.bill_number || ""}`, 0, totalY);
-    totalY += 28;
+    totalY += 32;
     ctx.fillText(`Date: ${receiptData.date || ""}`, 0, totalY);
-    totalY += 28;
+    totalY += 35;
     
     drawDivider();
 
@@ -139,34 +139,40 @@ const drawReceiptCanvas = async (receiptData) => {
     for (const item of (receiptData.items || [])) {
         ctx.textAlign = 'left';
         ctx.font = FONT_BODY;
-        ctx.fillText(`${item.quantity} x ${item.name}`, 0, totalY);
+        
+        // Truncate long names to prevent overlap with price
+        let itemName = `${item.quantity} x ${item.name}`;
+        if (itemName.length > 20) itemName = itemName.substring(0, 18) + '..';
+
+        ctx.fillText(itemName, 0, totalY);
         ctx.textAlign = 'right';
         ctx.fillText(`₹${parseFloat(item.subtotal || 0).toFixed(2)}`, width, totalY);
-        totalY += 35;
+        totalY += 38;
     }
     
+    totalY += 5; // Spacing before the item divider
     drawDivider();
 
-    // 5. PAYMENT METHOD & TOTAL (Added Payment Method)
+    // 5. PAYMENT METHOD & TOTAL
     ctx.textAlign = 'left';
     ctx.font = FONT_BODY;
     ctx.fillText('Payment Method', 0, totalY);
     ctx.textAlign = 'right';
     ctx.fillText(receiptData.payment_method || "Cash", width, totalY);
-    totalY += 35;
+    totalY += 45;
 
     ctx.textAlign = 'left';
     ctx.font = FONT_TOTAL;
     ctx.fillText('TOTAL', 0, totalY);
     ctx.textAlign = 'right';
     ctx.fillText(`₹${parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2)}`, width, totalY);
-    totalY += 60; // Extra space before footer
+    totalY += 70; // Huge space before footer
 
     // 6. FOOTER
     ctx.textAlign = 'center';
     ctx.font = FONT_SMALL;
     ctx.fillText('Thank you for visiting Cha Haus!', width / 2, totalY);
-    totalY += 60;
+    totalY += 70;
 
     // Crop canvas
     const finalCanvas = document.createElement('canvas');
