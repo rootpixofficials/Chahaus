@@ -1,5 +1,5 @@
 // Bluetooth Thermal Printer Library for Cha Haus
-// ULTRA-FAST DESIGN-PRESERVING PRINTING
+// ADAPTIVE PRINTING (High Speed for Laptop, Stable Speed for Tablet)
 
 export const connectPrinter = async () => {
     try {
@@ -26,17 +26,27 @@ export const connectPrinter = async () => {
     }
 };
 
-// 🔥 TURBO CHUNK SENDER (Optimized for Throughput)
+// 🔥 ADAPTIVE CHUNK SENDER
 const writeChunked = async (characteristic, data) => {
-    const chunkSize = 100; // Safe for MTU but faster than 20
+    // Detect if device is a Mobile/Tablet
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Laptop (Desktop) settings - EXACTLY as requested
+    let chunkSize = 100;
+    let delay = 2;
+
+    // Tablet (Mobile) settings - Optimized for mobile Bluetooth radios
+    if (isMobile) {
+        chunkSize = 64; // Smaller packets prevent mobile buffer overflow
+        delay = 8;      // More breathing room for tablet hardware
+    }
+
     for (let i = 0; i < data.length; i += chunkSize) {
         const chunk = data.slice(i, i + chunkSize);
         
-        // Use WithoutResponse if possible for 3x speed increase
         if (characteristic.properties.writeWithoutResponse) {
             await characteristic.writeValueWithoutResponse(chunk);
-            // 2ms micro-delay to prevent buffer saturation
-            await new Promise(r => setTimeout(r, 2));
+            await new Promise(r => setTimeout(r, delay));
         } else {
             await characteristic.writeValue(chunk);
         }
@@ -105,7 +115,7 @@ const canvasToESC_POS_Data = (canvas) => {
     return command;
 };
 
-// 🚀 STRIP-BY-STRIP PRINTING (Extreme Speed + Instant Start)
+// 🚀 STRIP-BY-STRIP PRINTING
 export const printReceipt = async (characteristic, receiptData) => {
     try {
         if (!characteristic) throw new Error("Printer not connected");
@@ -114,7 +124,6 @@ export const printReceipt = async (characteristic, receiptData) => {
         const width = 384;
         let totalY = 0;
 
-        // 1. Render entire receipt to a virtual canvas
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = width;
         tempCanvas.height = 3000;
@@ -124,7 +133,6 @@ export const printReceipt = async (characteristic, receiptData) => {
         ctx.fillStyle = 'black';
         ctx.textBaseline = 'top';
 
-        // LOGO
         const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
         try {
             const img = await new Promise((resolve, reject) => {
@@ -137,7 +145,6 @@ export const printReceipt = async (characteristic, receiptData) => {
             totalY += logoH + 10;
         } catch (e) {}
 
-        // HEADERS
         ctx.textAlign = 'center';
         ctx.font = 'bold 36px monospace';
         ctx.fillText('CHA HAUS', width / 2, totalY);
@@ -154,7 +161,6 @@ export const printReceipt = async (characteristic, receiptData) => {
         drawDivider();
         totalY += 8;
 
-        // META
         ctx.textAlign = 'left';
         ctx.font = '22px monospace';
         ctx.fillText(`No: ${receiptData.bill_number || ""}`, 0, totalY);
@@ -164,7 +170,6 @@ export const printReceipt = async (characteristic, receiptData) => {
         drawDivider();
         totalY += 8;
 
-        // ITEMS
         for (const item of (receiptData.items || [])) {
             ctx.textAlign = 'left';
             ctx.font = '22px monospace';
@@ -176,7 +181,6 @@ export const printReceipt = async (characteristic, receiptData) => {
         drawDivider();
         totalY += 10;
 
-        // TOTAL
         ctx.textAlign = 'left';
         ctx.font = 'bold 28px monospace';
         ctx.fillText('TOTAL', 0, totalY);
@@ -189,8 +193,9 @@ export const printReceipt = async (characteristic, receiptData) => {
         ctx.fillText('Thank you for visiting Cha Haus!', width / 2, totalY);
         totalY += 60;
 
-        // 2. BREAK INTO STRIPS AND PRINT IMMEDIATELY
-        const stripHeight = 120; // Small strips to start motor fast
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const stripHeight = isMobile ? 180 : 120; // Larger strips for tablet to reduce CPU overhead
+
         for (let currentY = 0; currentY < totalY; currentY += stripHeight) {
             const h = Math.min(stripHeight, totalY - currentY);
             const stripCanvas = document.createElement('canvas');
@@ -211,7 +216,6 @@ export const printReceipt = async (characteristic, receiptData) => {
 };
 
 export const printViaRawBT = async (receiptData) => {
-    // ... RawBT logic stays same ...
     const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
     const html = `<html><body style="width: 384px; font-family: monospace; padding: 10px;"><center><img src="${logoUrl}" style="width: 250px;"><br><b style="font-size: 32px;">CHA HAUS</b><br>Tea & Snacks</center><hr><div style="font-size: 20px;">No: ${receiptData.bill_number || ""}<br>Date: ${receiptData.date || ""}</div><hr>${(receiptData.items || []).map(item => `<div style="display: flex; justify-content: space-between; font-size: 20px;"><span>${item.quantity} x ${item.name}</span><span>₹${parseFloat(item.subtotal || 0).toFixed(2)}</span></div>`).join('')}<hr><div style="display: flex; justify-content: space-between; font-size: 24px; font-weight: bold;"><span>TOTAL:</span><span>₹${parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2)}</span></div><center><br>Thank you for visiting Cha Haus!</center></body></html>`;
     const safeBase64 = btoa(unescape(encodeURIComponent(html)));
