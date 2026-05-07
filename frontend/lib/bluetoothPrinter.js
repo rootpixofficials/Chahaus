@@ -188,7 +188,38 @@ export const printReceipt = async (characteristic, receiptData) => {
 
 export const printViaRawBT = async (receiptData) => {
     const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
-    const html = `<html><body style="width: 384px; font-family: monospace; padding: 10px;"><center><img src="${logoUrl}" style="width: 250px;"><br><b style="font-size: 34px;">CHA HAUS</b><br>Tea & Snacks</center><hr><div style="font-size: 20px;">No: ${receiptData.bill_number || ""}<br>Date: ${receiptData.date || ""}</div><hr>${(receiptData.items || []).map(item => `<div style="display: flex; justify-content: space-between; font-size: 20px;"><span>${item.quantity} x ${item.name}</span><span>₹${parseFloat(item.subtotal || 0).toFixed(2)}</span></div>`).join('')}<hr><div style="display: flex; justify-content: space-between; font-size: 26px; font-weight: bold;"><span>TOTAL:</span><span>₹${parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2)}</span></div><center><br>Thank you for visiting Cha Haus!</center></body></html>`;
+    const html = `<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="width: 100%; margin: 0; padding: 0; font-family: monospace; color: black;">
+    <center>
+        <img src="${logoUrl}" style="width: 80%; max-width: 250px;"><br>
+        <b style="font-size: 32px;">CHA HAUS</b><br>
+        <span style="font-size: 18px;">Tea & Snacks</span>
+    </center>
+    <hr style="border-top: 2px dashed black; margin: 10px 0;">
+    <div style="font-size: 18px;">
+        No: ${receiptData.bill_number || ""}<br>
+        Date: ${receiptData.date || ""}
+    </div>
+    <hr style="border-top: 2px dashed black; margin: 10px 0;">
+    ${(receiptData.items || []).map(item => `
+        <div style="display: flex; justify-content: space-between; font-size: 18px; margin-bottom: 8px;">
+            <span>${item.quantity} x ${item.name}</span>
+            <span>₹${parseFloat(item.subtotal || 0).toFixed(2)}</span>
+        </div>
+    `).join('')}
+    <hr style="border-top: 2px dashed black; margin: 10px 0;">
+    <div style="display: flex; justify-content: space-between; font-size: 26px; font-weight: bold; margin-top: 10px;">
+        <span>TOTAL:</span>
+        <span>₹${parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2)}</span>
+    </div>
+    <center style="margin-top: 30px; font-size: 16px;">
+        Thank you for visiting Cha Haus!
+    </center>
+</body>
+</html>`;
     const safeBase64 = btoa(unescape(encodeURIComponent(html)));
     window.location.href = "rawbt:data:text/html;base64," + safeBase64;
 };
