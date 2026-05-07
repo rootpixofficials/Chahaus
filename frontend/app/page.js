@@ -80,7 +80,15 @@ export default function Home() {
     const calculateTotal = () => cart.reduce((sum, item) => sum + Number(item.subtotal), 0);
 
     const handleBluetoothPrint = async () => {
-        if (!printerCharacteristic) {
+        let currentCharacteristic = printerCharacteristic;
+        
+        // If we have a characteristic but the device disconnected, force a reconnect
+        if (currentCharacteristic && !currentCharacteristic.service.device.gatt.connected) {
+            currentCharacteristic = null;
+            setPrinterCharacteristic(null);
+        }
+
+        if (!currentCharacteristic) {
             try {
                 const { characteristic } = await connectPrinter();
                 setPrinterCharacteristic(characteristic);
@@ -91,7 +99,7 @@ export default function Home() {
             }
         } else {
             try {
-                await printReceipt(printerCharacteristic, showReceipt);
+                await printReceipt(currentCharacteristic, showReceipt);
             } catch (err) {
                 printViaRawBT(showReceipt);
             }
@@ -110,12 +118,20 @@ export default function Home() {
             payment_method: "Test"
         };
         try {
-            if (!printerCharacteristic) {
+            let currentCharacteristic = printerCharacteristic;
+            
+            // If we have a characteristic but the device disconnected, force a reconnect
+            if (currentCharacteristic && !currentCharacteristic.service.device.gatt.connected) {
+                currentCharacteristic = null;
+                setPrinterCharacteristic(null);
+            }
+
+            if (!currentCharacteristic) {
                 const { characteristic } = await connectPrinter();
                 setPrinterCharacteristic(characteristic);
                 await printReceipt(characteristic, testReceipt);
             } else {
-                await printReceipt(printerCharacteristic, testReceipt);
+                await printReceipt(currentCharacteristic, testReceipt);
             }
             alert("Test print command sent successfully!");
         } catch (err) {
