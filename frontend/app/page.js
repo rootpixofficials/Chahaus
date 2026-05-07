@@ -429,35 +429,54 @@ export default function Home() {
             {/* Receipt Modal */}
             {showReceipt && (
                 <div className="receipt-preview-modal">
-                    <div className="receipt-content">
-                        <div className="receipt-header">
-                            <img src="/Image/Cha_Haus_logo_final-removebg-preview.png" alt="Logo" className="receipt-logo" />
-                            <div style={{fontSize:'20px', fontWeight:'bold'}}>CHA HAUS</div>
-                            <div style={{fontSize:'12px'}}>Tea & Snacks</div>
+                    <div className="receipt-content" style={{ padding: '40px 20px' }}>
+                        <div className="receipt-header" style={{ marginBottom: '20px' }}>
+                            <img src="/Image/Cha_Haus_logo_final-removebg-preview.png" alt="Logo" className="receipt-logo" style={{ width: '120px', marginBottom: '15px' }} />
+                            <div style={{fontSize:'24px', fontWeight:'900', marginBottom: '8px', letterSpacing: '2px'}}>CHA HAUS</div>
+                            <div style={{fontSize:'14px', fontWeight:'bold', marginBottom: '15px'}}>Tea & Snacks</div>
                         </div>
-                        <div className="receipt-divider"></div>
-                        <div style={{fontSize:'12px', marginBottom:'10px'}}>
+                        
+                        <div className="receipt-divider" style={{ borderTop: '2px dashed #000', margin: '15px 0' }}></div>
+                        
+                        <div style={{fontSize:'14px', fontWeight:'bold', marginBottom:'15px', display:'flex', flexDirection:'column', gap:'8px'}}>
                             <div>No: {showReceipt.bill_number}</div>
                             <div>Date: {showReceipt.date}</div>
                         </div>
-                        <div className="receipt-divider"></div>
-                        {showReceipt.items.map((item, idx) => (
-                            <div key={idx} className="receipt-row">
-                                <span>{item.quantity} x {item.name}</span>
-                                <span>₹{item.subtotal}</span>
-                            </div>
-                        ))}
-                        <div className="receipt-divider"></div>
-                        <div className="receipt-row">
+                        
+                        <div className="receipt-divider" style={{ borderTop: '2px dashed #000', margin: '15px 0' }}></div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
+                            {showReceipt.items.map((item, idx) => (
+                                <div key={idx} className="receipt-row" style={{ fontSize: '14px', fontWeight: 'bold' }}>
+                                    <span>{item.quantity} x {item.name}</span>
+                                    <span>₹{item.subtotal}</span>
+                                </div>
+                            ))}
+                        </div>
+                        
+                        <div className="receipt-divider" style={{ borderTop: '2px dashed #000', margin: '15px 0' }}></div>
+                        
+                        <div className="receipt-row" style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '15px' }}>
                             <span>Payment Method</span>
                             <span>{showReceipt.payment_method}</span>
                         </div>
-                        <div className="receipt-row" style={{fontWeight:'bold', fontSize:'16px'}}>
+                        
+                        <div className="receipt-row" style={{fontWeight:'900', fontSize:'20px', marginTop: '10px', marginBottom: '30px'}}>
                             <span>TOTAL</span>
                             <span>₹{showReceipt.total}</span>
                         </div>
-                        <div style={{textAlign:'center', marginTop:'30px', fontSize:'12px'}}>
+                        
+                        <div style={{textAlign:'center', marginTop:'30px', fontSize:'14px', fontWeight: 'bold'}}>
                             Thank you for visiting Cha Haus!
+                        </div>
+
+                        {/* Instagram Icon & Text */}
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '15px', marginBottom: '30px' }}>
+                            <div style={{ width: '16px', height: '16px', border: '2px solid black', borderRadius: '4px', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                                <div style={{ width: '6px', height: '6px', border: '2px solid black', borderRadius: '50%' }}></div>
+                                <div style={{ width: '2px', height: '2px', background: 'black', borderRadius: '50%', position: 'absolute', top: '1px', right: '1px' }}></div>
+                            </div>
+                            <span style={{ fontSize: '14px', fontWeight: 'bold' }}>@chahous.in</span>
                         </div>
                         
                         <div className="no-print" style={{marginTop:'20px', display:'flex', flexWrap: 'wrap', gap: '10px'}}>
