@@ -98,6 +98,32 @@ export default function Home() {
         }
     };
 
+    const handleTestPrint = async () => {
+        const testReceipt = {
+            bill_number: "TEST-123",
+            date: new Date().toLocaleString(),
+            items: [
+                { quantity: 1, name: "Test Item 1", subtotal: 100 },
+                { quantity: 2, name: "Test Item 2", subtotal: 50 }
+            ],
+            total_amount: 150,
+            payment_method: "Test"
+        };
+        try {
+            if (!printerCharacteristic) {
+                const { characteristic } = await connectPrinter();
+                setPrinterCharacteristic(characteristic);
+                await printReceipt(characteristic, testReceipt);
+            } else {
+                await printReceipt(printerCharacteristic, testReceipt);
+            }
+            alert("Test print command sent successfully!");
+        } catch (err) {
+            console.error("Test print failed:", err);
+            alert("Printer connection failed. Please pair your Bluetooth printer.");
+        }
+    };
+
     const handleCheckout = async () => {
         if (cart.length === 0) return;
         
@@ -170,6 +196,7 @@ export default function Home() {
                 </div>
                 <div style={{display:'flex', gap:'20px', alignItems:'center'}}>
                     {editBillId && <div style={{background:'#fef3c7', color:'#92400e', padding:'6px 12px', borderRadius:'8px', fontSize:'14px', fontWeight:'bold'}}>Editing Bill #{bills.find(b => b.id === editBillId)?.bill_number}</div>}
+                    <button className="no-print" onClick={handleTestPrint} style={{color: '#059669', border: '1px solid #059669', background: 'white', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight:'bold'}}>Test Printer 🖨️</button>
                     <button className="no-print" onClick={handleLogout} style={{color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer', fontWeight:'bold'}}>Logout 🚪</button>
                 </div>
             </header>

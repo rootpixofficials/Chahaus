@@ -21,18 +21,18 @@ export const connectPrinter = async () => {
     }
 };
 
-// 🔥 SUPER TURBO CHUNK SENDER
+// 🔥 FAST & STABLE CHUNK SENDER
 const writeChunked = async (characteristic, data) => {
-    // Increase chunk size significantly for "Super Turbo" speed
-    // 512 is the limit for most high-end and education tablets (like Byju's Lenovo tabs)
-    const chunkSize = 512; 
+    // 100 bytes is extremely safe and prevents the "Garbled Text" buffer overflow on Android
+    const chunkSize = 100; 
     
     for (let i = 0; i < data.length; i += chunkSize) {
         const chunk = data.slice(i, i + chunkSize);
         
         if (characteristic.properties.writeWithoutResponse) {
-            // Send without delay for maximum speed
             await characteristic.writeValueWithoutResponse(chunk);
+            // Crucial: 10ms delay prevents the tablet from dropping bytes (which causes the random letters)
+            await new Promise(r => setTimeout(r, 10)); 
         } else {
             await characteristic.writeValue(chunk);
         }
