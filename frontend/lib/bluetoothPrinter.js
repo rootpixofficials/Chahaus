@@ -96,27 +96,27 @@ const drawReceiptCanvas = async (receiptData) => {
     const FONT_TITLE = "bold 34px 'Courier New', monospace";
     const FONT_TOTAL = "bold 28px 'Courier New', monospace";
 
-    // 1. LOGO
+    // 1. LOGO (Increased size)
     const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
     try {
         const img = await new Promise((resolve, reject) => {
             const i = new Image(); i.crossOrigin = "Anonymous";
             i.onload = () => resolve(i); i.onerror = reject; i.src = logoUrl;
         });
-        const logoW = 120; // Exact size from image
+        const logoW = 240; // BIGGER LOGO
         const logoH = Math.round((img.height / img.width) * logoW);
         ctx.drawImage(img, (width - logoW) / 2, totalY, logoW, logoH);
-        totalY += logoH + 20; 
+        totalY += logoH + 40; // GAP BETWEEN LOGO AND CHA HAUS
     } catch (e) {}
 
     // 2. HEADERS
     ctx.textAlign = 'center';
     ctx.font = FONT_TITLE;
-    ctx.fillText('CHA  HAUS', width / 2, totalY); // Added extra space between CHA and HAUS like in the image
-    totalY += 38;
+    ctx.fillText('CHA  HAUS', width / 2, totalY); 
+    totalY += 45; // GAP BETWEEN CHA HAUS AND TEA & SNACKS
     ctx.font = FONT_REGULAR;
     ctx.fillText('Tea & Snacks', width / 2, totalY);
-    totalY += 40;
+    totalY += 45; // GAP AFTER TEA & SNACKS
 
     const printLine = (text, isBold = false) => {
         ctx.font = isBold ? FONT_BOLD : FONT_REGULAR;
@@ -126,8 +126,9 @@ const drawReceiptCanvas = async (receiptData) => {
     };
 
     const drawDashedLine = () => {
-        // Exactly 32 hyphens to match hardware receipt look
-        printLine("--------------------------------");
+        totalY += 10; // GAP BEFORE
+        printLine("--------------------------------", true); // BOLD DASHED LINE
+        totalY += 10; // GAP AFTER
     };
 
     // Helper to align text left and right perfectly across 32 characters
@@ -167,13 +168,50 @@ const drawReceiptCanvas = async (receiptData) => {
     ctx.fillText('TOTAL', 0, totalY);
     ctx.textAlign = 'right';
     ctx.fillText(`₹${parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2)}`, width, totalY);
-    totalY += 60; // Huge space before footer
+    totalY += 50; // Huge space before footer
 
     // 6. FOOTER
     ctx.textAlign = 'center';
     ctx.font = FONT_REGULAR;
     ctx.fillText('Thank you for visiting Cha Haus!', width / 2, totalY);
-    totalY += 60;
+    totalY += 50;
+
+    // 7. INSTAGRAM ICON & TEXT
+    const instaX = (width / 2) - 85; 
+    const instaY = totalY - 2;
+    const iconSize = 22;
+    const r = 5; // border radius
+
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'black';
+    ctx.beginPath();
+    ctx.moveTo(instaX + r, instaY);
+    ctx.lineTo(instaX + iconSize - r, instaY);
+    ctx.quadraticCurveTo(instaX + iconSize, instaY, instaX + iconSize, instaY + r);
+    ctx.lineTo(instaX + iconSize, instaY + iconSize - r);
+    ctx.quadraticCurveTo(instaX + iconSize, instaY + iconSize, instaX + iconSize - r, instaY + iconSize);
+    ctx.lineTo(instaX + r, instaY + iconSize);
+    ctx.quadraticCurveTo(instaX, instaY + iconSize, instaX, instaY + iconSize - r);
+    ctx.lineTo(instaX, instaY + r);
+    ctx.quadraticCurveTo(instaX, instaY, instaX + r, instaY);
+    ctx.stroke();
+
+    // inner circle
+    ctx.beginPath();
+    ctx.arc(instaX + iconSize/2, instaY + iconSize/2, 5, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // dot
+    ctx.beginPath();
+    ctx.arc(instaX + iconSize - 4.5, instaY + 4.5, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Text @chahous.in
+    ctx.textAlign = 'left';
+    ctx.font = "bold 20px 'Courier New', monospace";
+    ctx.fillText("@chahous.in", instaX + 35, totalY);
+
+    totalY += 70;
 
     // Crop canvas
     const finalCanvas = document.createElement('canvas');
