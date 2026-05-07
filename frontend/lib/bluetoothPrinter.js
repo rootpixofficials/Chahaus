@@ -89,57 +89,71 @@ const drawReceiptCanvas = async (receiptData) => {
     ctx.textBaseline = 'top';
     ctx.imageSmoothingEnabled = false;
 
-    // To perfectly match the hardware receipt width of 32 characters, 
-    // we use exactly 20px font size which gives a 12px character width (12 * 32 = 384).
-    const FONT_REGULAR = "20px 'Courier New', monospace";
-    const FONT_BOLD = "bold 20px 'Courier New', monospace";
-    const FONT_TITLE = "bold 34px 'Courier New', monospace";
-    const FONT_TOTAL = "bold 28px 'Courier New', monospace";
+    // TOP PADDING: so the printer blade does not cut the logo
+    totalY += 60; 
 
-    // 1. LOGO (Increased size)
+    // Universally bolder and larger fonts
+    const FONT_REGULAR = "bold 24px 'Courier New', Courier, monospace"; 
+    const FONT_TITLE = "900 38px 'Courier New', Courier, monospace";
+    const FONT_TOTAL = "900 32px 'Courier New', Courier, monospace";
+    const FONT_INSTA = "bold 24px 'Courier New', Courier, monospace";
+
+    // 1. LOGO
     const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
     try {
         const img = await new Promise((resolve, reject) => {
             const i = new Image(); i.crossOrigin = "Anonymous";
             i.onload = () => resolve(i); i.onerror = reject; i.src = logoUrl;
         });
-        const logoW = 240; // BIGGER LOGO
+        const logoW = 240; 
         const logoH = Math.round((img.height / img.width) * logoW);
         ctx.drawImage(img, (width - logoW) / 2, totalY, logoW, logoH);
-        totalY += logoH + 40; // GAP BETWEEN LOGO AND CHA HAUS
+        totalY += logoH + 50; // GAP BETWEEN LOGO AND CHA HAUS
     } catch (e) {}
 
     // 2. HEADERS
     ctx.textAlign = 'center';
     ctx.font = FONT_TITLE;
     ctx.fillText('CHA  HAUS', width / 2, totalY); 
-    totalY += 45; // GAP BETWEEN CHA HAUS AND TEA & SNACKS
+    totalY += 50; // GAP BETWEEN CHA HAUS AND TEA & SNACKS
     ctx.font = FONT_REGULAR;
     ctx.fillText('Tea & Snacks', width / 2, totalY);
-    totalY += 45; // GAP AFTER TEA & SNACKS
+    totalY += 50; // GAP AFTER TEA & SNACKS
 
-    const printLine = (text, isBold = false) => {
-        ctx.font = isBold ? FONT_BOLD : FONT_REGULAR;
+    // Helper functions for reliable printing with generous spacing
+    const printLine = (text, align = 'left', font = FONT_REGULAR) => {
+        ctx.font = font;
+        ctx.textAlign = align;
+        ctx.fillText(text, align === 'center' ? width/2 : 0, totalY);
+        totalY += 36; // Generous space between lines
+    };
+
+    const printRow = (leftText, rightText, font = FONT_REGULAR) => {
+        ctx.font = font;
         ctx.textAlign = 'left';
-        ctx.fillText(text, 0, totalY);
-        totalY += 24; // Standard line height
+        
+        let safeLeft = leftText;
+        if (safeLeft.length > 18) {
+            safeLeft = safeLeft.substring(0, 16) + '..';
+        }
+
+        ctx.fillText(safeLeft, 0, totalY);
+        ctx.textAlign = 'right';
+        ctx.fillText(rightText, width, totalY);
+        totalY += 36; // Generous space between rows
     };
 
     const drawDashedLine = () => {
-        totalY += 10; // GAP BEFORE
-        printLine("--------------------------------", true); // BOLD DASHED LINE
-        totalY += 10; // GAP AFTER
-    };
-
-    // Helper to align text left and right perfectly across 32 characters
-    const formatRow = (left, right) => {
-        const maxLeft = 32 - right.length - 1; // leave at least 1 space
-        let leftStr = left;
-        if (leftStr.length > maxLeft) {
-            leftStr = leftStr.substring(0, maxLeft - 2) + "..";
-        }
-        const spaces = 32 - leftStr.length - right.length;
-        return leftStr + ' '.repeat(spaces > 0 ? spaces : 1) + right;
+        totalY += 15; // GAP BEFORE LINE
+        ctx.beginPath();
+        ctx.setLineDash([8, 8]);
+        ctx.lineWidth = 3; // REALLY BOLD DASHED LINE
+        ctx.moveTo(0, totalY);
+        ctx.lineTo(width, totalY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.lineWidth = 1;
+        totalY += 25; // GAP AFTER LINE
     };
 
     drawDashedLine();
@@ -154,35 +168,29 @@ const drawReceiptCanvas = async (receiptData) => {
     for (const item of (receiptData.items || [])) {
         const left = `${item.quantity} x ${item.name}`;
         const right = `₹${parseFloat(item.subtotal || 0).toFixed(2)}`;
-        printLine(formatRow(left, right));
+        printRow(left, right);
     }
     
     drawDashedLine();
 
     // 5. PAYMENT METHOD & TOTAL
-    printLine(formatRow('Payment Method', receiptData.payment_method || "Cash"));
+    printRow('Payment Method', receiptData.payment_method || "Cash");
     
-    totalY += 10;
-    ctx.font = FONT_TOTAL;
-    ctx.textAlign = 'left';
-    ctx.fillText('TOTAL', 0, totalY);
-    ctx.textAlign = 'right';
-    ctx.fillText(`₹${parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2)}`, width, totalY);
-    totalY += 50; // Huge space before footer
+    totalY += 20; // Extra space before total
+    printRow('TOTAL', `₹${parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2)}`, FONT_TOTAL);
+    totalY += 50; // Space after total
 
     // 6. FOOTER
-    ctx.textAlign = 'center';
-    ctx.font = FONT_REGULAR;
-    ctx.fillText('Thank you for visiting Cha Haus!', width / 2, totalY);
-    totalY += 50;
+    printLine('Thank you for visiting Cha Haus!', 'center');
+    totalY += 40; // Space before Instagram
 
     // 7. INSTAGRAM ICON & TEXT
     const instaX = (width / 2) - 85; 
     const instaY = totalY - 2;
-    const iconSize = 22;
-    const r = 5; // border radius
+    const iconSize = 24; 
+    const r = 6; 
 
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5; // Bold Instagram icon
     ctx.strokeStyle = 'black';
     ctx.beginPath();
     ctx.moveTo(instaX + r, instaY);
@@ -196,22 +204,20 @@ const drawReceiptCanvas = async (receiptData) => {
     ctx.quadraticCurveTo(instaX, instaY, instaX + r, instaY);
     ctx.stroke();
 
-    // inner circle
     ctx.beginPath();
-    ctx.arc(instaX + iconSize/2, instaY + iconSize/2, 5, 0, Math.PI * 2);
+    ctx.arc(instaX + iconSize/2, instaY + iconSize/2, 6, 0, Math.PI * 2);
     ctx.stroke();
 
-    // dot
     ctx.beginPath();
-    ctx.arc(instaX + iconSize - 4.5, instaY + 4.5, 1.5, 0, Math.PI * 2);
+    ctx.arc(instaX + iconSize - 6, instaY + 6, 2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Text @chahous.in
     ctx.textAlign = 'left';
-    ctx.font = "bold 20px 'Courier New', monospace";
-    ctx.fillText("@chahous.in", instaX + 35, totalY);
+    ctx.font = FONT_INSTA;
+    ctx.fillText("@chahous.in", instaX + 38, totalY);
 
-    totalY += 70;
+    // BOTTOM PADDING: so the printer blade doesn't cut the Instagram logo
+    totalY += 100;
 
     // Crop canvas
     const finalCanvas = document.createElement('canvas');
