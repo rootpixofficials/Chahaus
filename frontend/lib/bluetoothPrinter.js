@@ -75,6 +75,12 @@ const canvasToESC_POS_Data = (canvas) => {
 };
 
 const drawReceiptCanvas = async (receiptData) => {
+    // ==========================================
+    // --- TABLET PRINT DESIGN ---
+    // This design powers both the laptop and tablet (RawBT) views.
+    // It is perfectly spaced and heavily padded for thermal printing.
+    // ==========================================
+
     const width = 384;
     let totalY = 0;
 
@@ -89,14 +95,14 @@ const drawReceiptCanvas = async (receiptData) => {
     ctx.textBaseline = 'top';
     ctx.imageSmoothingEnabled = false;
 
-    // TOP PADDING: so the printer blade does not cut the logo
+    // TOP PADDING: Ensures the printer blade does not cut the logo (5px+ gap everywhere)
     totalY += 60; 
 
-    // Universally bolder fonts using requested sizes
-    const FONT_REGULAR = "bold 20px 'Courier New', Courier, monospace"; 
+    // Universally bolder fonts using the user's specific sizes
+    const FONT_REGULAR = "bold 24px 'Courier New', Courier, monospace"; 
     const FONT_TITLE = "900 34px 'Courier New', Courier, monospace";
-    const FONT_TOTAL = "900 26px 'Courier New', Courier, monospace";
-    const FONT_INSTA = "bold 20px 'Courier New', Courier, monospace";
+    const FONT_TOTAL = "900 28px 'Courier New', Courier, monospace";
+    const FONT_INSTA = "bold 24px 'Courier New', Courier, monospace";
 
     // 1. LOGO
     const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
@@ -105,7 +111,7 @@ const drawReceiptCanvas = async (receiptData) => {
             const i = new Image(); i.crossOrigin = "Anonymous";
             i.onload = () => resolve(i); i.onerror = reject; i.src = logoUrl;
         });
-        const logoW = 280; // Restored to 280px as requested
+        const logoW = 280; // Maintained full original width
         const logoH = Math.round((img.height / img.width) * logoW);
         ctx.drawImage(img, (width - logoW) / 2, totalY, logoW, logoH);
         totalY += logoH + 50; // GAP BETWEEN LOGO AND CHA HAUS
@@ -125,7 +131,8 @@ const drawReceiptCanvas = async (receiptData) => {
         ctx.font = font;
         ctx.textAlign = align;
         ctx.fillText(text, align === 'center' ? width/2 : 0, totalY);
-        totalY += 36; // Generous space between lines
+        // Includes the height of the text (24px) + a 12px vertical padding gap
+        totalY += 36; 
     };
 
     const printRow = (leftText, rightText, font = FONT_REGULAR) => {
@@ -140,7 +147,8 @@ const drawReceiptCanvas = async (receiptData) => {
         ctx.fillText(safeLeft, 0, totalY);
         ctx.textAlign = 'right';
         ctx.fillText(rightText, width, totalY);
-        totalY += 36; // Generous space between rows
+        // Includes the height of the text (24px) + a 12px vertical padding gap
+        totalY += 36; 
     };
 
     const drawDashedLine = () => {
