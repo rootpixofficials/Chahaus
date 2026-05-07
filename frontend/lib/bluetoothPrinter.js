@@ -75,10 +75,10 @@ const canvasToESC_POS_Data = (canvas) => {
 };
 
 const drawReceiptCanvas = async (receiptData) => {
-
     // ==========================================
-    // 🔥 NEW CLEAN PROFESSIONAL RECEIPT DESIGN
-    // Matches the provided image layout
+    // --- TABLET PRINT DESIGN ---
+    // This design powers both the laptop and tablet (RawBT) views.
+    // It is perfectly spaced and heavily padded for thermal printing.
     // ==========================================
 
     const width = 384;
@@ -87,242 +87,151 @@ const drawReceiptCanvas = async (receiptData) => {
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = width;
     tempCanvas.height = 3000;
-
     const ctx = tempCanvas.getContext('2d');
-
-    // Background
-    ctx.fillStyle = '#ffffff';
+    
+    ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, width, tempCanvas.height);
-
-    ctx.fillStyle = '#000000';
+    ctx.fillStyle = 'black';
     ctx.textBaseline = 'top';
-    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingEnabled = false;
 
-    // Fonts
-    const FONT_TITLE = "bold 30px 'Courier New', monospace";
-    const FONT_SUBTITLE = "24px 'Courier New', monospace";
-    const FONT_NORMAL = "24px 'Courier New', monospace";
-    const FONT_TOTAL = "bold 34px 'Courier New', monospace";
-    const FONT_FOOTER = "22px 'Courier New', monospace";
+    // TOP PADDING: Ensures the printer blade does not cut the logo (5px+ gap everywhere)
+    totalY += 60; 
 
-    // ==========================================
-    // TOP SPACE
-    // ==========================================
+    // Universally bolder fonts using the user's specific sizes
+    const FONT_REGULAR = "bold 24px 'Courier New', Courier, monospace"; 
+    const FONT_TITLE = "900 34px 'Courier New', Courier, monospace";
+    const FONT_TOTAL = "900 28px 'Courier New', Courier, monospace";
+    const FONT_INSTA = "bold 24px 'Courier New', Courier, monospace";
 
-    totalY += 40;
-
-    // ==========================================
-    // LOGO
-    // ==========================================
-
-    const logoUrl =
-        window.location.origin +
-        "/Image/Cha_Haus_logo_final-removebg-preview.png";
-
+    // 1. LOGO
+    const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
     try {
         const img = await new Promise((resolve, reject) => {
-            const i = new Image();
-            i.crossOrigin = "Anonymous";
-            i.onload = () => resolve(i);
-            i.onerror = reject;
-            i.src = logoUrl;
+            const i = new Image(); i.crossOrigin = "Anonymous";
+            i.onload = () => resolve(i); i.onerror = reject; i.src = logoUrl;
         });
-
-        const logoW = 110;
+        const logoW = 280; // Maintained full original width
         const logoH = Math.round((img.height / img.width) * logoW);
+        ctx.drawImage(img, (width - logoW) / 2, totalY, logoW, logoH);
+        totalY += logoH + 50; // GAP BETWEEN LOGO AND CHA HAUS
+    } catch (e) {}
 
-        ctx.drawImage(
-            img,
-            (width - logoW) / 2,
-            totalY,
-            logoW,
-            logoH
-        );
-
-        totalY += logoH + 35;
-
-    } catch (e) {
-        console.log("Logo load failed", e);
-    }
-
-    // ==========================================
-    // TITLE
-    // ==========================================
-
-    ctx.textAlign = "center";
-
+    // 2. HEADERS
+    ctx.textAlign = 'center';
     ctx.font = FONT_TITLE;
-    ctx.fillText("CHA HAUS", width / 2, totalY);
+    ctx.fillText('CHA  HAUS', width / 2, totalY); 
+    totalY += 50; // GAP BETWEEN CHA HAUS AND TEA & SNACKS
+    ctx.font = FONT_REGULAR;
+    ctx.fillText('Tea & Snacks', width / 2, totalY);
+    totalY += 50; // GAP AFTER TEA & SNACKS
 
-    totalY += 45;
-
-    ctx.font = FONT_SUBTITLE;
-    ctx.fillText("Tea & Snacks", width / 2, totalY);
-
-    totalY += 45;
-
-    // ==========================================
-    // DASHED LINE
-    // ==========================================
-
-    const drawDashedLine = () => {
-
-        ctx.beginPath();
-
-        ctx.setLineDash([6, 4]);
-
-        ctx.lineWidth = 2;
-
-        ctx.moveTo(20, totalY);
-
-        ctx.lineTo(width - 20, totalY);
-
-        ctx.stroke();
-
-        ctx.setLineDash([]);
-
-        totalY += 30;
+    // Helper functions for reliable printing with generous spacing
+    const printLine = (text, align = 'left', font = FONT_REGULAR) => {
+        ctx.font = font;
+        ctx.textAlign = align;
+        ctx.fillText(text, align === 'center' ? width/2 : 0, totalY);
+        // Includes the height of the text (24px) + a 12px vertical padding gap
+        totalY += 36; 
     };
 
-    drawDashedLine();
-
-    // ==========================================
-    // META DETAILS
-    // ==========================================
-
-    ctx.font = FONT_NORMAL;
-    ctx.textAlign = "left";
-
-    ctx.fillText(
-        `No: ${receiptData.bill_number || ""}`,
-        24,
-        totalY
-    );
-
-    totalY += 38;
-
-    ctx.fillText(
-        `Date: ${receiptData.date || ""}`,
-        24,
-        totalY
-    );
-
-    totalY += 40;
-
-    drawDashedLine();
-
-    // ==========================================
-    // ITEMS
-    // ==========================================
-
-    const printRow = (leftText, rightText, font = FONT_NORMAL) => {
-
+    const printRow = (leftText, rightText, font = FONT_REGULAR) => {
         ctx.font = font;
-
-        ctx.textAlign = "left";
-
+        ctx.textAlign = 'left';
+        
         let safeLeft = leftText;
-
-        if (safeLeft.length > 24) {
-            safeLeft = safeLeft.substring(0, 22) + "..";
+        if (safeLeft.length > 18) {
+            safeLeft = safeLeft.substring(0, 16) + '..';
         }
 
-        ctx.fillText(safeLeft, 24, totalY);
-
-        ctx.textAlign = "right";
-
-        ctx.fillText(rightText, width - 24, totalY);
-
-        totalY += 42;
+        ctx.fillText(safeLeft, 0, totalY);
+        ctx.textAlign = 'right';
+        ctx.fillText(rightText, width, totalY);
+        // Includes the height of the text (24px) + a 12px vertical padding gap
+        totalY += 36; 
     };
 
-    for (const item of (receiptData.items || [])) {
-
-        const left =
-            `${item.quantity} x ${item.name}`;
-
-        const right =
-            `₹${parseFloat(item.subtotal || 0).toFixed(2)}`;
-
-        printRow(left, right);
-    }
-
-    totalY += 10;
+    const drawDashedLine = () => {
+        totalY += 15; // GAP BEFORE LINE
+        ctx.beginPath();
+        ctx.setLineDash([8, 8]);
+        ctx.lineWidth = 3; // REALLY BOLD DASHED LINE
+        ctx.moveTo(0, totalY);
+        ctx.lineTo(width, totalY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.lineWidth = 1;
+        totalY += 25; // GAP AFTER LINE
+    };
 
     drawDashedLine();
 
-    // ==========================================
-    // PAYMENT METHOD
-    // ==========================================
+    // 3. META
+    printLine(`No: ${receiptData.bill_number || ""}`);
+    printLine(`Date: ${receiptData.date || ""}`);
+    
+    drawDashedLine();
 
-    printRow(
-        "Payment Method",
-        receiptData.payment_method || "Cash"
-    );
+    // 4. ITEMS
+    for (const item of (receiptData.items || [])) {
+        const left = `${item.quantity} x ${item.name}`;
+        const right = `₹${parseFloat(item.subtotal || 0).toFixed(2)}`;
+        printRow(left, right);
+    }
+    
+    drawDashedLine();
 
-    totalY += 10;
+    // 5. PAYMENT METHOD & TOTAL
+    printRow('Payment Method', receiptData.payment_method || "Cash");
+    
+    totalY += 20; // Extra space before total
+    printRow('TOTAL', `₹${parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2)}`, FONT_TOTAL);
+    totalY += 50; // Space after total
 
-    // ==========================================
-    // TOTAL
-    // ==========================================
+    // 6. FOOTER
+    printLine('Thank you for visiting Cha Haus!', 'center');
+    totalY += 40; // Space before Instagram
 
-    printRow(
-        "TOTAL",
-        `₹${parseFloat(
-            receiptData.total ||
-            receiptData.total_amount ||
-            0
-        ).toFixed(2)}`,
-        FONT_TOTAL
-    );
+    // 7. INSTAGRAM ICON & TEXT
+    const instaX = (width / 2) - 85; 
+    const instaY = totalY - 2;
+    const iconSize = 24; 
+    const r = 6; 
 
-    totalY += 40;
+    ctx.lineWidth = 2.5; // Bold Instagram icon
+    ctx.strokeStyle = 'black';
+    ctx.beginPath();
+    ctx.moveTo(instaX + r, instaY);
+    ctx.lineTo(instaX + iconSize - r, instaY);
+    ctx.quadraticCurveTo(instaX + iconSize, instaY, instaX + iconSize, instaY + r);
+    ctx.lineTo(instaX + iconSize, instaY + iconSize - r);
+    ctx.quadraticCurveTo(instaX + iconSize, instaY + iconSize, instaX + iconSize - r, instaY + iconSize);
+    ctx.lineTo(instaX + r, instaY + iconSize);
+    ctx.quadraticCurveTo(instaX, instaY + iconSize, instaX, instaY + iconSize - r);
+    ctx.lineTo(instaX, instaY + r);
+    ctx.quadraticCurveTo(instaX, instaY, instaX + r, instaY);
+    ctx.stroke();
 
-    // ==========================================
-    // FOOTER
-    // ==========================================
+    ctx.beginPath();
+    ctx.arc(instaX + iconSize/2, instaY + iconSize/2, 6, 0, Math.PI * 2);
+    ctx.stroke();
 
-    ctx.textAlign = "center";
+    ctx.beginPath();
+    ctx.arc(instaX + iconSize - 6, instaY + 6, 2, 0, Math.PI * 2);
+    ctx.fill();
 
-    ctx.font = FONT_FOOTER;
+    ctx.textAlign = 'left';
+    ctx.font = FONT_INSTA;
+    ctx.fillText("@chahous.in", instaX + 38, totalY);
 
-    ctx.fillText(
-        "Thank you for visiting Cha Haus!",
-        width / 2,
-        totalY
-    );
+    // BOTTOM PADDING: so the printer blade doesn't cut the Instagram logo
+    totalY += 100;
 
-    totalY += 70;
-
-    // ==========================================
-    // BOTTOM SPACE
-    // ==========================================
-
-    totalY += 30;
-
-    // ==========================================
-    // FINAL CROP
-    // ==========================================
-
+    // Crop canvas
     const finalCanvas = document.createElement('canvas');
-
     finalCanvas.width = width;
-
     finalCanvas.height = totalY;
-
-    const finalCtx = finalCanvas.getContext('2d');
-
-    finalCtx.drawImage(
-        tempCanvas,
-        0,
-        0,
-        width,
-        totalY,
-        0,
-        0,
-        width,
-        totalY
-    );
+    finalCanvas.getContext('2d').drawImage(tempCanvas, 0, 0, width, totalY, 0, 0, width, totalY);
 
     return finalCanvas;
 };
