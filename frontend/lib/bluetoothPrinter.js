@@ -1,5 +1,5 @@
 // Bluetooth Thermal Printer Library for Cha Haus
-// V3: COMPACT DESIGN + TABLET SPEED FIX
+// V4: SUPER TURBO MODE (Optimized for Byju's Tab/Android)
 
 export const connectPrinter = async () => {
     try {
@@ -10,11 +10,9 @@ export const connectPrinter = async () => {
         const server = await device.gatt.connect();
         const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
         const characteristics = await service.getCharacteristics();
-        
         const writeCharacteristic = characteristics.find(char => 
             char.properties.write || char.properties.writeWithoutResponse
         );
-
         if (!writeCharacteristic) throw new Error("No write characteristic found.");
         return { characteristic: writeCharacteristic };
     } catch (error) {
@@ -23,23 +21,19 @@ export const connectPrinter = async () => {
     }
 };
 
-// 🔥 FAST & STABLE CHUNK SENDER
+// 🔥 SUPER TURBO CHUNK SENDER
 const writeChunked = async (characteristic, data) => {
-    // 120 bytes is the sweet spot for almost all Android tablets & Windows PCs
-    const chunkSize = 120; 
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // Increase chunk size significantly for "Super Turbo" speed
+    // 512 is the limit for most high-end and education tablets (like Byju's Lenovo tabs)
+    const chunkSize = 512; 
     
-    // For Tablet: We use a tiny delay. For Laptop: No delay.
-    const delay = isMobile ? 5 : 0; 
-
     for (let i = 0; i < data.length; i += chunkSize) {
         const chunk = data.slice(i, i + chunkSize);
         
         if (characteristic.properties.writeWithoutResponse) {
+            // Send without delay for maximum speed
             await characteristic.writeValueWithoutResponse(chunk);
-            if (delay > 0) await new Promise(r => setTimeout(r, delay));
         } else {
-            // Fallback for devices that don't support WithoutResponse
             await characteristic.writeValue(chunk);
         }
     }
@@ -63,19 +57,14 @@ const canvasToESC_POS_Data = (canvas) => {
     const xBytes = Math.ceil(width / 8);
     const data = new Uint8Array(xBytes * height);
 
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const idx = (y * width + x) * 4;
-            const r = pixels[idx];
-            const g = pixels[idx+1];
-            const b = pixels[idx+2];
-            const a = pixels[idx+3];
-            
-            // Force High Contrast (Pure Black or Pure White)
-            if (a > 128 && (r + g + b) / 3 < 200) {
-                const byteIdx = y * xBytes + Math.floor(x / 8);
-                data[byteIdx] |= (1 << (7 - (x % 8)));
-            }
+    // Optimized loop for mobile CPUs
+    for (let i = 0; i < pixels.length; i += 4) {
+        if (pixels[i+3] > 128 && (pixels[i] + pixels[i+1] + pixels[i+2]) / 3 < 200) {
+            const pixelIdx = i / 4;
+            const y = Math.floor(pixelIdx / width);
+            const x = pixelIdx % width;
+            const byteIdx = y * xBytes + Math.floor(x / 8);
+            data[byteIdx] |= (1 << (7 - (x % 8)));
         }
     }
 
@@ -85,7 +74,7 @@ const canvasToESC_POS_Data = (canvas) => {
     return command;
 };
 
-// 🚀 STRIP-BY-STRIP PRINTING (Smaller Fonts)
+// 🚀 STRIP-BY-STRIP PRINTING
 export const printReceipt = async (characteristic, receiptData) => {
     try {
         if (!characteristic) throw new Error("Printer not connected");
@@ -105,19 +94,20 @@ export const printReceipt = async (characteristic, receiptData) => {
         ctx.textBaseline = 'top';
         ctx.imageSmoothingEnabled = false;
 
-        // --- NEW COMPACT FONT SIZES ---
-        const FONT_BOLD = "bold 30px 'Courier New', monospace";
-        const FONT_NORMAL = "18px 'Courier New', monospace";
+        // --- REQUESTED FONT SIZES ---
+        const FONT_HEADER = "bold 34px 'Courier New', monospace";
+        const FONT_BODY = "20px 'Courier New', monospace";
         const FONT_SMALL = "16px 'Courier New', monospace";
+        const FONT_TOTAL = "bold 26px 'Courier New', monospace";
 
-        // 1. LOGO
+        // 1. LOGO (Restored width)
         const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
         try {
             const img = await new Promise((resolve, reject) => {
                 const i = new Image(); i.crossOrigin = "Anonymous";
                 i.onload = () => resolve(i); i.onerror = reject; i.src = logoUrl;
             });
-            const logoW = 240; // Smaller logo for speed
+            const logoW = 280; 
             const logoH = Math.round((img.height / img.width) * logoW);
             ctx.drawImage(img, (width - logoW) / 2, totalY, logoW, logoH);
             totalY += logoH + 10;
@@ -125,58 +115,58 @@ export const printReceipt = async (characteristic, receiptData) => {
 
         // 2. HEADERS
         ctx.textAlign = 'center';
-        ctx.font = FONT_BOLD;
+        ctx.font = FONT_HEADER;
         ctx.fillText('CHA HAUS', width / 2, totalY);
-        totalY += 40;
-        ctx.font = FONT_NORMAL;
+        totalY += 42;
+        ctx.font = FONT_BODY;
         ctx.fillText('Tea & Snacks', width / 2, totalY);
-        totalY += 30;
+        totalY += 32;
 
         const drawDivider = () => {
             ctx.setLineDash([4, 4]);
             ctx.beginPath(); ctx.moveTo(0, totalY); ctx.lineTo(width, totalY); ctx.stroke();
-            totalY += 10; ctx.setLineDash([]);
+            totalY += 12; ctx.setLineDash([]);
         };
         drawDivider();
-        totalY += 5;
+        totalY += 8;
 
         // 3. META
         ctx.textAlign = 'left';
-        ctx.font = FONT_NORMAL;
+        ctx.font = FONT_BODY;
         ctx.fillText(`No: ${receiptData.bill_number || ""}`, 0, totalY);
-        totalY += 25;
+        totalY += 28;
         ctx.fillText(`Date: ${receiptData.date || ""}`, 0, totalY);
-        totalY += 25;
+        totalY += 28;
         drawDivider();
-        totalY += 5;
+        totalY += 8;
 
         // 4. ITEMS
         for (const item of (receiptData.items || [])) {
             ctx.textAlign = 'left';
-            ctx.font = FONT_NORMAL;
+            ctx.font = FONT_BODY;
             ctx.fillText(`${item.quantity} x ${item.name}`, 0, totalY);
             ctx.textAlign = 'right';
             ctx.fillText(`₹${parseFloat(item.subtotal || 0).toFixed(2)}`, width, totalY);
-            totalY += 30;
+            totalY += 35;
         }
         drawDivider();
         totalY += 10;
 
         // 5. TOTAL
         ctx.textAlign = 'left';
-        ctx.font = "bold 24px 'Courier New', monospace";
+        ctx.font = FONT_TOTAL;
         ctx.fillText('TOTAL', 0, totalY);
         ctx.textAlign = 'right';
         ctx.fillText(`₹${parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2)}`, width, totalY);
-        totalY += 45;
+        totalY += 50;
 
         ctx.textAlign = 'center';
         ctx.font = FONT_SMALL;
         ctx.fillText('Thank you for visiting Cha Haus!', width / 2, totalY);
-        totalY += 50;
+        totalY += 60;
 
         // 6. PRINT IN STRIPS
-        const stripHeight = 100; // Smaller strips for faster start
+        const stripHeight = 200; // Larger strips for Byju's Tab CPU efficiency
         for (let currentY = 0; currentY < totalY; currentY += stripHeight) {
             const h = Math.min(stripHeight, totalY - currentY);
             const stripCanvas = document.createElement('canvas');
@@ -198,7 +188,7 @@ export const printReceipt = async (characteristic, receiptData) => {
 
 export const printViaRawBT = async (receiptData) => {
     const logoUrl = window.location.origin + "/Image/Cha_Haus_logo_final-removebg-preview.png";
-    const html = `<html><body style="width: 384px; font-family: monospace; padding: 10px;"><center><img src="${logoUrl}" style="width: 250px;"><br><b style="font-size: 32px;">CHA HAUS</b><br>Tea & Snacks</center><hr><div style="font-size: 18px;">No: ${receiptData.bill_number || ""}<br>Date: ${receiptData.date || ""}</div><hr>${(receiptData.items || []).map(item => `<div style="display: flex; justify-content: space-between; font-size: 18px;"><span>${item.quantity} x ${item.name}</span><span>₹${parseFloat(item.subtotal || 0).toFixed(2)}</span></div>`).join('')}<hr><div style="display: flex; justify-content: space-between; font-size: 20px; font-weight: bold;"><span>TOTAL:</span><span>₹${parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2)}</span></div><center><br>Thank you for visiting Cha Haus!</center></body></html>`;
+    const html = `<html><body style="width: 384px; font-family: monospace; padding: 10px;"><center><img src="${logoUrl}" style="width: 250px;"><br><b style="font-size: 34px;">CHA HAUS</b><br>Tea & Snacks</center><hr><div style="font-size: 20px;">No: ${receiptData.bill_number || ""}<br>Date: ${receiptData.date || ""}</div><hr>${(receiptData.items || []).map(item => `<div style="display: flex; justify-content: space-between; font-size: 20px;"><span>${item.quantity} x ${item.name}</span><span>₹${parseFloat(item.subtotal || 0).toFixed(2)}</span></div>`).join('')}<hr><div style="display: flex; justify-content: space-between; font-size: 26px; font-weight: bold;"><span>TOTAL:</span><span>₹${parseFloat(receiptData.total || receiptData.total_amount || 0).toFixed(2)}</span></div><center><br>Thank you for visiting Cha Haus!</center></body></html>`;
     const safeBase64 = btoa(unescape(encodeURIComponent(html)));
     window.location.href = "rawbt:data:text/html;base64," + safeBase64;
 };
